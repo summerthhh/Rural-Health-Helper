@@ -1,0 +1,32 @@
+[
+  {
+    "id": "d1",
+    "name": "Common Cold",
+    "symptoms": ["sneezing", "runny nose", "sore throat"],
+    "medicines": ["Paracetamol", "Ibuprofen", "Antihistamine"]
+  },
+  {
+    "id": "d2",
+    "name": "Malaria",
+    "symptoms": ["fever", "chills", "sweating"],
+    "medicines": ["Artemisinin", "Chloroquine", "Primaquine"]
+  },
+  {
+    "id": "d3",
+    "name": "Diarrhea",
+    "symptoms": ["loose stools", "cramps", "dehydration"],
+    "medicines": ["Oral Rehydration Salts", "Zinc", "Loperamide"]
+  },
+  {
+    "id": "d4",
+    "name": "Hypertension",
+    "symptoms": ["headache", "dizziness", "blurred vision"],
+    "medicines": ["Amlodipine", "Enalapril", "Losartan"]
+  },
+  {
+    "id": "d5",
+    "name": "Diabetes",
+    "symptoms": ["thirst", "frequent urination", "fatigue"],
+    "medicines": ["Metformin", "Insulin", "Glipizide"]
+  }
+]

@@ -1,0 +1,11 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Runtime data
+uploads/
+data/
+
+# Vercel local metadata
+.vercel/
