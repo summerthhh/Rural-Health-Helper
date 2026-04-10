@@ -1,0 +1,453 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin Console</title>
+  <style>
+    :root {
+      --bg: #eef4ea;
+      --card: #ffffff;
+      --text: #1f2c1d;
+      --muted: #5f6c60;
+      --line: #d8e1d5;
+      --primary: #0f766e;
+      --danger: #b91c1c;
+      --warn: #d97706;
+      --ok: #166534;
+      --shadow: 0 14px 32px rgba(19, 32, 22, .08);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 90% 8%, rgba(15,118,110,.15), transparent 34%),
+        radial-gradient(circle at 2% 75%, rgba(217,119,6,.12), transparent 30%),
+        var(--bg);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .shell { max-width: 1200px; margin: 0 auto; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    h1, h2, h3, h4 { margin: 0; }
+
+    .muted { color: var(--muted); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 14px;
+    }
+
+    .main { display: grid; gap: 14px; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .pill {
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #eaf4ef;
+      color: var(--ok);
+      border: 1px solid #cfe3d5;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .btn.alt { background: #2e3f32; }
+    .btn.warn { background: var(--warn); }
+    .btn.danger { background: var(--danger); }
+    .btn.light { color: var(--text); background: #e9efe8; }
+
+    .hidden { display: none !important; }
+
+    label { display: grid; gap: 6px; margin: 10px 0; font-weight: 600; }
+
+    input {
+      width: 100%;
+      border: 1px solid #cfd8cd;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font: inherit;
+    }
+
+    .list { display: grid; gap: 10px; }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fcfefd;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .counts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="top card">
+      <div>
+        <h1>Super Admin Console</h1>
+        <p class="muted">Manage patients and vendors quickly</p>
+      </div>
+      <div class="counts">
+        <span class="pill" id="count-patients">Patients: 0</span>
+        <span class="pill" id="count-vendors">Vendors: 0</span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h3>Admin Login</h3>
+        <p class="muted">Use the super admin credentials</p>
+        <form id="login-form">
+          <label>Phone
+            <input name="phone" required autocomplete="username">
+          </label>
+          <label>Password
+            <input name="password" type="password" required autocomplete="current-password">
+          </label>
+          <div class="actions">
+            <button class="btn" type="submit">Sign In</button>
+            <button class="btn light" type="button" id="btn-logout">Logout</button>
+          </div>
+        </form>
+        <p id="login-result" class="muted"></p>
+      </section>
+
+      <section class="main hidden" id="admin-area">
+        <div class="card">
+          <div class="toolbar">
+            <button class="btn alt" id="btn-refresh">Refresh</button>
+            <button class="btn warn" id="btn-merge">Merge Duplicates</button>
+            <button class="btn danger" id="btn-clear-patients">Clear All Patients</button>
+            <button class="btn danger" id="btn-clear-vendors">Clear All Vendors</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <h3>Vendors</h3>
+          </div>
+          <div class="list" id="vendors-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <h3>Patients</h3>
+          </div>
+          <div class="list" id="patients-list"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const apiBase = '';
+
+    const state = {
+      token: localStorage.getItem('admin_token') || ''
+    };
+
+    function setToken(t) {
+      state.token = t || '';
+      if (state.token) localStorage.setItem('admin_token', state.token);
+      else localStorage.removeItem('admin_token');
+    }
+
+    function setMsg(msg) {
+      el('login-result').textContent = msg;
+    }
+
+    function authHeaders(extra = {}) {
+      const h = { ...extra };
+      if (state.token) h['X-Admin-Token'] = state.token;
+      return h;
+    }
+
+    async function request(path, opts = {}) {
+      const response = await fetch(apiBase + path, {
+        ...opts,
+        headers: authHeaders(opts.headers || {})
+      });
+      if (response.status === 401) {
+        setToken('');
+        toggleAdminArea(false);
+        throw new Error('Admin auth required. Please login again.');
+      }
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text);
+      }
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) return response.json();
+      return response.text();
+    }
+
+    function toggleAdminArea(show) {
+      el('admin-area').classList.toggle('hidden', !show);
+    }
+
+    function renderCounts(patients, vendors) {
+      el('count-patients').textContent = `Patients: ${patients.length}`;
+      el('count-vendors').textContent = `Vendors: ${vendors.length}`;
+    }
+
+    async function loadVendors() {
+      const data = await request('/vendors');
+      const list = el('vendors-list');
+      list.innerHTML = '';
+
+      if (!data.vendors || data.vendors.length === 0) {
+        list.innerHTML = '<div class="muted">No vendors found.</div>';
+        return [];
+      }
+
+      data.vendors.forEach((v) => {
+        const card = document.createElement('article');
+        card.className = 'item';
+        card.innerHTML = `
+          <div class="row">
+            <strong>${v.shop_name || 'Shop'}</strong>
+            <span class="pill">${v.status || 'unknown'}</span>
+          </div>
+          <div class="muted">${v.first_name || ''} ${v.last_name || ''} | ${v.phone || '-'}</div>
+          <div class="actions">
+            <button class="btn" data-action="approve">Approve</button>
+            <button class="btn warn" data-action="block">Block</button>
+            <button class="btn danger" data-action="delete">Delete</button>
+          </div>
+        `;
+
+        card.querySelector('[data-action="approve"]').onclick = async () => {
+          await request(`/admin/vendor/${v.id}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: 'Approved from admin console' })
+          });
+          await loadAll();
+        };
+
+        card.querySelector('[data-action="block"]').onclick = async () => {
+          await request(`/admin/vendor/${v.id}/block`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: 'Blocked from admin console' })
+          });
+          await loadAll();
+        };
+
+        card.querySelector('[data-action="delete"]').onclick = async () => {
+          if (!confirm('Delete this vendor permanently?')) return;
+          await request(`/admin/vendor/${v.id}`, { method: 'DELETE' });
+          await loadAll();
+        };
+
+        list.appendChild(card);
+      });
+
+      return data.vendors;
+    }
+
+    async function loadPatients() {
+      const data = await request('/admin/patients');
+      const list = el('patients-list');
+      list.innerHTML = '';
+
+      if (!data.patients || data.patients.length === 0) {
+        list.innerHTML = '<div class="muted">No patients found.</div>';
+        return [];
+      }
+
+      data.patients.forEach((u) => {
+        const card = document.createElement('article');
+        card.className = 'item';
+        card.innerHTML = `
+          <div class="row">
+            <strong>${u.first_name || ''} ${u.last_name || ''}</strong>
+            <span class="pill">${u.phone || '-'}</span>
+          </div>
+          <div class="muted">${u.email || 'No email'}</div>
+          <div class="actions">
+            <button class="btn danger" data-action="delete">Delete</button>
+          </div>
+        `;
+
+        card.querySelector('[data-action="delete"]').onclick = async () => {
+          if (!confirm('Delete this patient permanently?')) return;
+          await request(`/admin/patient/${u.id}`, { method: 'DELETE' });
+          await loadAll();
+        };
+
+        list.appendChild(card);
+      });
+
+      return data.patients;
+    }
+
+    async function loadAll() {
+      const [vendors, patients] = await Promise.all([loadVendors(), loadPatients()]);
+      renderCounts(patients, vendors);
+    }
+
+    el('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        const response = await fetch('/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: fd.get('phone'),
+            password: fd.get('password')
+          })
+        });
+
+        const out = await response.json();
+        if (!response.ok) {
+          setMsg(out.detail || 'Login failed');
+          return;
+        }
+
+        setToken(out.token);
+        setMsg('Login successful');
+        toggleAdminArea(true);
+        await loadAll();
+      } catch (err) {
+        setMsg('Login failed: ' + err.message);
+      }
+    });
+
+    el('btn-logout').addEventListener('click', () => {
+      setToken('');
+      toggleAdminArea(false);
+      setMsg('Logged out');
+      renderCounts([], []);
+      el('vendors-list').innerHTML = '';
+      el('patients-list').innerHTML = '';
+    });
+
+    el('btn-refresh').addEventListener('click', async () => {
+      try {
+        await loadAll();
+      } catch (err) {
+        alert('Refresh failed: ' + err.message);
+      }
+    });
+
+    el('btn-merge').addEventListener('click', async () => {
+      if (!confirm('Merge duplicate patients by phone?')) return;
+      try {
+        const out = await request('/admin/merge_duplicates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        alert('Merged: ' + (out.merged || 0));
+        await loadAll();
+      } catch (err) {
+        alert('Merge failed: ' + err.message);
+      }
+    });
+
+    el('btn-clear-patients').addEventListener('click', async () => {
+      if (!confirm('Clear ALL patient data? This cannot be undone.')) return;
+      try {
+        await request('/admin/patients/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        alert('Patients cleared successfully.');
+        await loadAll();
+      } catch (err) {
+        alert('Clear failed: ' + err.message);
+      }
+    });
+
+    el('btn-clear-vendors').addEventListener('click', async () => {
+      if (!confirm('Clear ALL vendor data (including approved/blocked/pending)?')) return;
+      try {
+        await request('/admin/vendors/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        alert('Vendors cleared successfully.');
+        await loadAll();
+      } catch (err) {
+        alert('Clear failed: ' + err.message);
+      }
+    });
+
+    window.addEventListener('load', async () => {
+      setMsg('Connected to: ' + window.location.origin);
+      if (!state.token) {
+        toggleAdminArea(false);
+        return;
+      }
+      try {
+        toggleAdminArea(true);
+        await loadAll();
+        setMsg('Admin session restored');
+      } catch {
+        setToken('');
+        toggleAdminArea(false);
+      }
+    });
+  </script>
+</body>
+</html>

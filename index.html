@@ -1,0 +1,340 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Rural Health Helper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="bg-shape bg-shape-a" aria-hidden="true"></div>
+  <div class="bg-shape bg-shape-b" aria-hidden="true"></div>
+
+  <div class="shell">
+    <header class="topbar card glass">
+      <div>
+        <p class="eyebrow">Web Dashboard</p>
+        <h1>Rural Health Helper</h1>
+      </div>
+      <div class="topbar-actions">
+        <div id="status-pill" class="pill muted">Not signed in</div>
+        <button id="btn-home" class="btn ghost">Home</button>
+        <button id="btn-signin" class="btn ghost">Sign In</button>
+        <button id="btn-logout" class="btn danger hidden">Logout</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="view-landing" class="card hero">
+        <div>
+          <p class="eyebrow">Healthcare, anywhere</p>
+          <h2>Run your full health helper directly in the browser</h2>
+          <p class="subtext">Sign in as a patient or vendor, manage permissions, consult quickly, upload files, and search nearby medicine availability from one clean interface.</p>
+          <div class="hero-actions">
+            <button id="start-patient" class="btn primary">Continue as Patient</button>
+            <button id="start-vendor" class="btn secondary">Continue as Vendor</button>
+            <a href="/static/admin.html" class="btn ghost">Login as Admin</a>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <h3>Smart Search</h3>
+            <p>Find symptoms, medicines, and nearby pharmacies fast.</p>
+          </article>
+          <article class="feature-card">
+            <h3>Consult Tools</h3>
+            <p>Tap-to-call support and upload documents securely.</p>
+          </article>
+          <article class="feature-card">
+            <h3>Role Workflows</h3>
+            <p>Separate patient and vendor entry points with clean flows.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="view-patient-auth" class="card hidden">
+        <div class="section-head">
+          <h2>Patient Access</h2>
+          <button data-back="view-landing" class="btn ghost">Back</button>
+        </div>
+        <p class="muted admin-login-line">Admin login: <a href="/static/admin.html" target="_blank" rel="noopener">Open admin page</a></p>
+        <div class="tabs" role="tablist">
+          <button id="patient-tab-login" class="tab active" role="tab">Login</button>
+          <button id="patient-tab-signup" class="tab" role="tab">Sign Up</button>
+        </div>
+
+        <div id="patient-login-panel" class="panel">
+          <form id="patient-login-form" class="form-grid">
+            <label>Phone
+              <input name="phone" id="patient-login-phone" required placeholder="e.g. 9876543210">
+            </label>
+            <label>Password
+              <input name="password" id="patient-login-password" type="password" required placeholder="Your password">
+            </label>
+            <label class="checkbox-row"><input type="checkbox" id="patient-remember"> Remember me</label>
+            <button type="submit" class="btn primary">Login & Open Dashboard</button>
+          </form>
+          <p id="patient-login-msg" class="msg"></p>
+        </div>
+
+        <div id="patient-signup-panel" class="panel hidden">
+          <form id="patient-signup-form" class="form-grid two-col">
+            <label>First Name
+              <input name="first_name" required>
+            </label>
+            <label>Last Name
+              <input name="last_name" required>
+            </label>
+            <label>Phone
+              <input name="phone" required>
+            </label>
+            <label>Email
+              <input name="email" type="email">
+            </label>
+            <label class="full">Password
+              <input name="password" type="password" required>
+            </label>
+            <button type="submit" class="btn secondary full">Create Patient Account</button>
+          </form>
+          <p id="patient-signup-msg" class="msg"></p>
+        </div>
+      </section>
+
+      <section id="view-vendor-auth" class="card hidden">
+        <div class="section-head">
+          <h2>Vendor Access</h2>
+          <button data-back="view-landing" class="btn ghost">Back</button>
+        </div>
+        <p class="muted admin-login-line">Admin login: <a href="/static/admin.html" target="_blank" rel="noopener">Open admin page</a></p>
+        <div class="tabs" role="tablist">
+          <button id="vendor-tab-login" class="tab active" role="tab">Login</button>
+          <button id="vendor-tab-signup" class="tab" role="tab">Sign Up</button>
+        </div>
+
+        <div id="vendor-login-panel" class="panel">
+          <form id="vendor-login-form" class="form-grid">
+            <label>Phone
+              <input name="phone" id="vendor-login-phone" required>
+            </label>
+            <label>Password
+              <input name="password" id="vendor-login-password" type="password" required>
+            </label>
+            <label class="checkbox-row"><input type="checkbox" id="vendor-remember"> Remember me</label>
+            <button type="submit" class="btn primary">Vendor Login</button>
+          </form>
+          <p id="vendor-login-msg" class="msg"></p>
+        </div>
+
+        <div id="vendor-signup-panel" class="panel hidden">
+          <form id="vendor-signup-form" class="form-grid two-col">
+            <label>First Name
+              <input name="first_name" required>
+            </label>
+            <label>Last Name
+              <input name="last_name" required>
+            </label>
+            <label>Phone
+              <input name="phone" required>
+            </label>
+            <label>Email
+              <input name="email" type="email">
+            </label>
+            <label>Shop Name
+              <input name="shop_name" required>
+            </label>
+            <label>Shop Address
+              <input name="shop_address" required>
+            </label>
+            <label>License No
+              <input name="license_no" required>
+            </label>
+            <label>Password
+              <input name="password" type="password" required>
+            </label>
+            <button type="submit" class="btn secondary full">Create Vendor Account</button>
+          </form>
+          <p id="vendor-signup-msg" class="msg"></p>
+        </div>
+      </section>
+
+      <section id="view-vendor-dashboard" class="hidden">
+        <div class="dashboard-grid">
+          <aside class="card glass sidebar">
+            <h3>Vendor Panel</h3>
+            <p id="vendor-sidebar-user" class="muted">No vendor session</p>
+            <nav class="stack-nav">
+              <button class="btn ghost vendor-nav-btn active" data-vendor-panel="vendor-panel-store">Store Details</button>
+              <button class="btn ghost vendor-nav-btn" data-vendor-panel="vendor-panel-medicines">Medicines</button>
+            </nav>
+          </aside>
+
+          <div class="panel-area">
+            <section id="vendor-panel-store" class="card vendor-panel-page">
+              <div class="section-head">
+                <h2>Store Details</h2>
+                <span class="pill" id="vendor-status-pill">Vendor</span>
+              </div>
+              <form id="vendor-store-form" class="form-grid two-col">
+                <label>Shop Name
+                  <input name="shop_name" id="vendor-store-name" required>
+                </label>
+                <label>Shop Address
+                  <input name="shop_address" id="vendor-store-address" required>
+                </label>
+                <div class="full location-box">
+                  <h4>Store Location</h4>
+                  <p id="vendor-location-display" class="muted">Location not set.</p>
+                  <div class="location-actions">
+                    <button type="button" id="vendor-use-current-location" class="btn secondary">Use Current Location</button>
+                    <button type="button" id="vendor-open-maps" class="btn ghost" disabled>Open in Google Maps</button>
+                  </div>
+                  <input name="lat" id="vendor-store-lat" type="hidden">
+                  <input name="lng" id="vendor-store-lng" type="hidden">
+                </div>
+                <label class="full">Open Hours
+                  <input name="open_hours" id="vendor-store-hours" placeholder="e.g. 9 AM - 9 PM">
+                </label>
+                <label class="full">Contact Note
+                  <input name="contact_note" id="vendor-store-note" placeholder="e.g. Call before bulk orders">
+                </label>
+                <button type="submit" class="btn primary full">Save Store Details</button>
+              </form>
+              <p id="vendor-store-msg" class="msg"></p>
+            </section>
+
+            <section id="vendor-panel-medicines" class="card vendor-panel-page hidden">
+              <div class="section-head">
+                <h2>Medicine Inventory</h2>
+                <span class="pill">Simple Stock</span>
+              </div>
+              <form id="vendor-medicine-form" class="form-grid two-col">
+                <label>Medicine Name
+                  <input name="name" id="vendor-med-name" required>
+                </label>
+                <label>Units
+                  <input name="units" id="vendor-med-units" type="number" min="0" required>
+                </label>
+                <label>Medicine Per Unit
+                  <input name="medicine_per_unit" id="vendor-med-per-unit" placeholder="e.g. 10 tablets or 500mg" required>
+                </label>
+                <label>Price
+                  <input name="price" id="vendor-med-price" type="number" min="0" step="0.01" placeholder="optional">
+                </label>
+                <button type="submit" class="btn secondary full">Add / Update Medicine</button>
+              </form>
+              <p id="vendor-medicine-msg" class="msg"></p>
+              <div id="vendor-medicine-list" class="results"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-dashboard" class="hidden">
+        <div class="dashboard-grid">
+          <aside class="card glass sidebar">
+            <h3>Dashboard</h3>
+            <p id="sidebar-user" class="muted">No active user</p>
+            <nav class="stack-nav">
+              <button class="btn ghost nav-btn active" data-panel="panel-profile">Profile</button>
+              <button class="btn ghost nav-btn" data-panel="panel-consult">Consult</button>
+              <button class="btn ghost nav-btn" data-panel="panel-history">Medical History</button>
+              <button class="btn ghost nav-btn" data-panel="panel-search">Disease Search</button>
+              <button class="btn ghost nav-btn" data-panel="panel-store-search">Search Medical Store</button>
+            </nav>
+          </aside>
+
+          <div class="panel-area">
+            <section id="panel-profile" class="card panel-page">
+              <div class="section-head">
+                <h2>Patient Profile</h2>
+                <span class="pill" id="profile-id-pill">Session</span>
+              </div>
+              <div id="profile-info" class="kv"></div>
+              <div class="permissions-grid">
+                <article class="mini-card">
+                  <h4>Location</h4>
+                  <p id="perm-location">Unknown</p>
+                  <button id="btn-refresh-location" class="btn secondary">Refresh Location Permission</button>
+                </article>
+                <article class="mini-card">
+                  <h4>Call</h4>
+                  <p id="perm-call">Unknown</p>
+                  <button id="btn-set-call" class="btn secondary">Set Call Permission</button>
+                </article>
+                <article class="mini-card">
+                  <h4>Gallery</h4>
+                  <p id="perm-gallery">Unknown</p>
+                  <button id="btn-set-gallery" class="btn secondary">Set Gallery Permission</button>
+                </article>
+              </div>
+            </section>
+
+            <section id="panel-consult" class="card panel-page hidden">
+              <div class="section-head">
+                <h2>Consult</h2>
+                <span class="pill">Live Support</span>
+              </div>
+              <div class="consult-layout">
+                <article class="mini-card">
+                  <h4>Call Helpline</h4>
+                  <p>Tap to call: <strong id="consult-phone">7839010007</strong></p>
+                  <button id="btn-call" class="btn primary">Call Now</button>
+                </article>
+                <article class="mini-card">
+                  <h4>Upload Reports / Images</h4>
+                  <input type="file" id="file-input">
+                  <button id="btn-upload" class="btn secondary">Upload File</button>
+                  <p id="upload-msg" class="msg"></p>
+                </article>
+              </div>
+            </section>
+
+            <section id="panel-history" class="card panel-page hidden">
+              <div class="section-head">
+                <h2>Medical History</h2>
+                <span class="pill">Consultation Records</span>
+              </div>
+              <div id="medical-history-list" class="results"></div>
+              <div id="medical-history-detail" class="results"></div>
+            </section>
+
+            <section id="panel-search" class="card panel-page hidden">
+              <div class="section-head">
+                <h2>Disease Search</h2>
+                <span class="pill">Geo-Aware</span>
+              </div>
+              <form id="search-form" class="inline-form">
+                <input name="disease" placeholder="Type disease name (e.g. malaria)" required>
+                <button class="btn primary" type="submit">Search</button>
+              </form>
+              <div id="search-results" class="results"></div>
+            </section>
+
+            <section id="panel-store-search" class="card panel-page hidden">
+              <div class="section-head">
+                <h2>Search Medical Store</h2>
+                <span class="pill">From Database</span>
+              </div>
+              <form id="store-search-form" class="inline-form">
+                <input id="store-search-query" placeholder="Type medical store name" autocomplete="off" required>
+                <button class="btn primary" type="submit">Search</button>
+              </form>
+              <a class="btn secondary" id="btn-nearby-stores" href="https://www.google.com/maps/search/?api=1&query=medical+stores+near+me" target="_blank" rel="noopener">Open Nearby Medical Shops in Google Maps</a>
+              <div id="store-suggestions" class="results"></div>
+              <div id="store-search-result" class="results"></div>
+              <div id="nearby-store-list" class="results"></div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast-wrap" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
