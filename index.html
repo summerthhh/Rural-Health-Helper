@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <div class="bg-shape bg-shape-a" aria-hidden="true"></div>
@@ -36,7 +36,8 @@
           <div class="hero-actions">
             <button id="start-patient" class="btn primary">Continue as Patient</button>
             <button id="start-vendor" class="btn secondary">Continue as Vendor</button>
-            <a href="/admin.html" class="btn ghost">Login as Admin</a>
+            <button id="start-doctor" class="btn ghost">Continue as Doctor</button>
+            <a href="/static/admin.html" class="btn ghost">Login as Admin</a>
           </div>
         </div>
         <div class="feature-grid">
@@ -52,6 +53,10 @@
             <h3>Role Workflows</h3>
             <p>Separate patient and vendor entry points with clean flows.</p>
           </article>
+          <article class="feature-card">
+            <h3>Doctor Console</h3>
+            <p>Doctors can manage patients, view uploads, and issue prescriptions.</p>
+          </article>
         </div>
       </section>
 
@@ -60,7 +65,7 @@
           <h2>Patient Access</h2>
           <button data-back="view-landing" class="btn ghost">Back</button>
         </div>
-       <p class="muted admin-login-line">Admin login: <a href="/admin.html" target="_blank" rel="noopener">Open admin page</a></p>
+        <p class="muted admin-login-line">Admin login: <a href="/static/admin.html" target="_blank" rel="noopener">Open admin page</a></p>
         <div class="tabs" role="tablist">
           <button id="patient-tab-login" class="tab active" role="tab">Login</button>
           <button id="patient-tab-signup" class="tab" role="tab">Sign Up</button>
@@ -108,7 +113,7 @@
           <h2>Vendor Access</h2>
           <button data-back="view-landing" class="btn ghost">Back</button>
         </div>
-        <p class="muted admin-login-line">Admin login: <a href="/admin.html" target="_blank" rel="noopener">Open admin page</a></p>
+        <p class="muted admin-login-line">Admin login: <a href="/static/admin.html" target="_blank" rel="noopener">Open admin page</a></p>
         <div class="tabs" role="tablist">
           <button id="vendor-tab-login" class="tab active" role="tab">Login</button>
           <button id="vendor-tab-signup" class="tab" role="tab">Sign Up</button>
@@ -157,6 +162,55 @@
             <button type="submit" class="btn secondary full">Create Vendor Account</button>
           </form>
           <p id="vendor-signup-msg" class="msg"></p>
+        </div>
+      </section>
+
+      <section id="view-doctor-auth" class="card hidden">
+        <div class="section-head">
+          <h2>Doctor Access</h2>
+          <button data-back="view-landing" class="btn ghost">Back</button>
+        </div>
+        <div class="tabs" role="tablist">
+          <button id="doctor-tab-login" class="tab active" role="tab">Login</button>
+          <button id="doctor-tab-signup" class="tab" role="tab">Sign Up</button>
+        </div>
+
+        <div id="doctor-login-panel" class="panel">
+          <form id="doctor-login-form" class="form-grid">
+            <label>Phone
+              <input name="phone" id="doctor-login-phone" required>
+            </label>
+            <label>Password
+              <input name="password" id="doctor-login-password" type="password" required>
+            </label>
+            <button type="submit" class="btn primary">Doctor Login</button>
+          </form>
+          <p id="doctor-login-msg" class="msg"></p>
+        </div>
+
+        <div id="doctor-signup-panel" class="panel hidden">
+          <form id="doctor-signup-form" class="form-grid two-col">
+            <label>First Name
+              <input name="first_name" required>
+            </label>
+            <label>Last Name
+              <input name="last_name" required>
+            </label>
+            <label>Phone
+              <input name="phone" required>
+            </label>
+            <label>Email
+              <input name="email" type="email">
+            </label>
+            <label class="full">Specialization
+              <input name="specialization" placeholder="e.g. General Physician">
+            </label>
+            <label class="full">Password
+              <input name="password" type="password" required>
+            </label>
+            <button type="submit" class="btn secondary full">Create Doctor Account</button>
+          </form>
+          <p id="doctor-signup-msg" class="msg"></p>
         </div>
       </section>
 
@@ -232,6 +286,77 @@
         </div>
       </section>
 
+      <section id="view-doctor-dashboard" class="hidden">
+        <div class="dashboard-grid">
+          <aside class="card glass sidebar">
+            <h3>Doctor Panel</h3>
+            <p id="doctor-sidebar-user" class="muted">No doctor session</p>
+            <nav class="stack-nav">
+              <button class="btn ghost doctor-nav-btn active" data-doctor-panel="doctor-panel-overview">Overview</button>
+              <button class="btn ghost doctor-nav-btn" data-doctor-panel="doctor-panel-patients">Your Patients</button>
+              <button class="btn ghost doctor-nav-btn" data-doctor-panel="doctor-panel-consults">Consult Requests</button>
+              <button class="btn ghost doctor-nav-btn" data-doctor-panel="doctor-panel-prescribe">Online Prescription</button>
+            </nav>
+          </aside>
+
+          <div class="panel-area">
+            <section id="doctor-panel-overview" class="card doctor-panel-page">
+              <div class="section-head">
+                <h2>Doctor Dashboard</h2>
+                <span class="pill" id="doctor-status-pill">Doctor</span>
+              </div>
+              <div id="doctor-overview-card" class="results"></div>
+            </section>
+
+            <section id="doctor-panel-patients" class="card doctor-panel-page hidden">
+              <div class="section-head">
+                <h2>Your Patients</h2>
+                <span class="pill">Linked from Consult</span>
+              </div>
+              <div id="doctor-patient-list" class="results"></div>
+              <div id="doctor-patient-detail" class="results"></div>
+            </section>
+
+            <section id="doctor-panel-consults" class="card doctor-panel-page hidden">
+              <div class="section-head">
+                <h2>Consult Requests</h2>
+                <span class="pill">Incoming Calls</span>
+              </div>
+              <div id="doctor-consult-list" class="results"></div>
+            </section>
+
+            <section id="doctor-panel-prescribe" class="card doctor-panel-page hidden">
+              <div class="section-head">
+                <h2>Online Prescription</h2>
+                <span class="pill">Send to Patient</span>
+              </div>
+              <form id="doctor-prescription-form" class="form-grid two-col">
+                <label>Patient ID
+                  <input name="patient_id" id="doctor-presc-patient-id" required placeholder="Paste patient ID">
+                </label>
+                <label>Consultation ID (optional)
+                  <input name="consultation_id" id="doctor-presc-consult-id" placeholder="Optional">
+                </label>
+                <label class="full">Prescription Note
+                  <textarea name="note" id="doctor-presc-note" rows="4" required placeholder="Write diagnosis and notes"></textarea>
+                </label>
+                <label>Medicines
+                  <input name="medicines" id="doctor-presc-medicines" placeholder="e.g. Paracetamol 500mg BD">
+                </label>
+                <label>Follow Up
+                  <input name="follow_up" id="doctor-presc-followup" placeholder="e.g. 7 days">
+                </label>
+                <label class="full">Upload Prescription Photos
+                  <input name="photos" id="doctor-presc-photos" type="file" accept="image/*" multiple>
+                </label>
+                <button type="submit" class="btn primary full">Send Prescription</button>
+              </form>
+              <p id="doctor-prescription-msg" class="msg"></p>
+            </section>
+          </div>
+        </div>
+      </section>
+
       <section id="view-dashboard" class="hidden">
         <div class="dashboard-grid">
           <aside class="card glass sidebar">
@@ -279,9 +404,17 @@
               </div>
               <div class="consult-layout">
                 <article class="mini-card">
-                  <h4>Call Helpline</h4>
-                  <p>Tap to call: <strong id="consult-phone">7839010007</strong></p>
-                  <button id="btn-call" class="btn primary">Call Now</button>
+                  <h4>Request Doctor Consult</h4>
+                  <label>Select Doctor
+                    <select id="consult-doctor-select">
+                      <option value="">Loading doctors...</option>
+                    </select>
+                  </label>
+                  <label>Reason (optional)
+                    <input id="consult-reason" placeholder="Describe symptoms briefly">
+                  </label>
+                  <button id="btn-request-consult" class="btn primary">Request Consult</button>
+                  <p id="consult-request-msg" class="msg"></p>
                 </article>
                 <article class="mini-card">
                   <h4>Upload Reports / Images</h4>
@@ -335,6 +468,6 @@
 
   <div id="toast-wrap" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="/app.js"></script>
+  <script src="/static/app.js"></script>
 </body>
 </html>

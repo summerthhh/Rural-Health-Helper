@@ -236,7 +236,22 @@ input {
   font: inherit;
 }
 
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #c8d3c6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
 input:focus {
+  border-color: var(--primary);
+  outline: 2px solid rgba(15, 118, 110, 0.18);
+}
+
+select:focus,
+textarea:focus {
   border-color: var(--primary);
   outline: 2px solid rgba(15, 118, 110, 0.18);
 }
@@ -290,6 +305,11 @@ input:focus {
 }
 
 .vendor-nav-btn.active {
+  background: #edf7f5;
+  border-color: #b9d6d1;
+}
+
+.doctor-nav-btn.active {
   background: #edf7f5;
   border-color: #b9d6d1;
 }
@@ -440,6 +460,13 @@ input:focus {
   border-radius: 14px;
   padding: 14px;
   background: #fff;
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .shop-list {

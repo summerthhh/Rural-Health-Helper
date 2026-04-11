@@ -5,8 +5,13 @@ const state = {
   activePanel: "panel-profile",
   userId: localStorage.getItem("user_id") || "",
   vendorId: localStorage.getItem("vendor_id") || "",
+  doctorId: localStorage.getItem("doctor_id") || "",
   user: null,
   vendor: null,
+  doctor: null,
+  doctorPublicList: [],
+  doctorPatients: [],
+  doctorConsultRequests: [],
   medicalHistory: []
 };
 
@@ -14,7 +19,9 @@ const ids = [
   "view-landing",
   "view-patient-auth",
   "view-vendor-auth",
+  "view-doctor-auth",
   "view-vendor-dashboard",
+  "view-doctor-dashboard",
   "view-dashboard"
 ];
 
@@ -102,6 +109,14 @@ function setTopStatus() {
     return;
   }
 
+  if (state.doctorId) {
+    const displayName = state.doctor ? `Dr. ${state.doctor.first_name || ""} ${state.doctor.last_name || ""}`.trim() : "Doctor";
+    status.textContent = displayName;
+    status.classList.remove("muted");
+    logout.classList.remove("hidden");
+    return;
+  }
+
   status.textContent = "Not signed in";
   status.classList.add("muted");
   logout.classList.add("hidden");
@@ -130,9 +145,12 @@ function switchAuthTab(kind, tab) {
   if (kind === "patient") {
     safeText("patient-login-msg", "");
     safeText("patient-signup-msg", "");
-  } else {
+  } else if (kind === "vendor") {
     safeText("vendor-login-msg", "");
     safeText("vendor-signup-msg", "");
+  } else {
+    safeText("doctor-login-msg", "");
+    safeText("doctor-signup-msg", "");
   }
 }
 
@@ -149,6 +167,13 @@ function switchVendorPanel(panelId) {
   document.querySelectorAll(".vendor-nav-btn").forEach((node) => node.classList.remove("active"));
   show(panelId);
   document.querySelector(`.vendor-nav-btn[data-vendor-panel='${panelId}']`)?.classList.add("active");
+}
+
+function switchDoctorPanel(panelId) {
+  document.querySelectorAll(".doctor-panel-page").forEach((node) => node.classList.add("hidden"));
+  document.querySelectorAll(".doctor-nav-btn").forEach((node) => node.classList.remove("active"));
+  show(panelId);
+  document.querySelector(`.doctor-nav-btn[data-doctor-panel='${panelId}']`)?.classList.add("active");
 }
 
 function updateVendorLocationUI(lat, lng) {
@@ -206,6 +231,7 @@ async function loadPatientDashboard(userId) {
   safeText("sidebar-user", `${data.user.first_name || "Patient"} (${data.user.phone || "no phone"})`);
   safeText("profile-id-pill", `ID: ${userId.slice(0, 8)}...`);
   renderProfile(data.user);
+  await loadDoctorPublicList();
   await loadMedicalHistory(userId);
   switchView("view-dashboard");
   switchDashboardPanel("panel-profile");
@@ -412,6 +438,188 @@ async function loadVendorDashboard(vendorId) {
   switchVendorPanel("vendor-panel-store");
 }
 
+function renderDoctorOverview(doctor, patients, consults) {
+  const out = el("doctor-overview-card");
+  if (!out) return;
+  out.innerHTML = "";
+  const card = document.createElement("article");
+  card.className = "result-card";
+  const spec = doctor.specialization || "General Physician";
+  card.innerHTML = `
+    <h3>Dr. ${doctor.first_name || ""} ${doctor.last_name || ""}</h3>
+    <p><strong>Specialization:</strong> ${spec}</p>
+    <p><strong>Phone:</strong> ${doctor.phone || "-"}</p>
+    <p><strong>Total Patients:</strong> ${patients.length}</p>
+    <p><strong>Consult Requests:</strong> ${consults.length}</p>
+  `;
+  out.appendChild(card);
+}
+
+function renderDoctorPatientDetails(item) {
+  const out = el("doctor-patient-detail");
+  if (!out) return;
+  out.innerHTML = "";
+  if (!item) return;
+
+  const head = document.createElement("article");
+  head.className = "result-card";
+  const p = item.patient || {};
+  head.innerHTML = `
+    <h3>${p.first_name || ""} ${p.last_name || ""}</h3>
+    <p><strong>Phone:</strong> ${p.phone || "-"}</p>
+    <p><strong>Email:</strong> ${p.email || "-"}</p>
+  `;
+  out.appendChild(head);
+
+  const consults = Array.isArray(item.consultations) ? item.consultations : [];
+  const consultCard = document.createElement("article");
+  consultCard.className = "result-card";
+  consultCard.innerHTML = "<h4>Uploaded Files and Notes</h4>";
+  if (!consults.length) {
+    consultCard.innerHTML += "<p>No consultations yet.</p>";
+  } else {
+    const wrap = document.createElement("div");
+    wrap.className = "history-notes";
+    consults.forEach((c, idx) => {
+      const files = (c.files || []).map((f) => `<a href="${f.url}" target="_blank" rel="noopener">${f.filename || "file"}</a>`).join(", ") || "No files";
+      const notes = (c.doctor_notes || []).map((n) => `${n.doctor_name || "Doctor"}: ${n.note || ""}`).join(" | ") || "No doctor notes";
+      const row = document.createElement("div");
+      row.className = "history-note-card";
+      row.innerHTML = `
+        <p><strong>${c.title || `Consultation ${idx + 1}`}</strong> (${c.date || "-"})</p>
+        <p><strong>Files:</strong> ${files}</p>
+        <p><strong>Notes:</strong> ${notes}</p>
+      `;
+      wrap.appendChild(row);
+    });
+    consultCard.appendChild(wrap);
+  }
+  out.appendChild(consultCard);
+}
+
+function renderDoctorPatients(items) {
+  const out = el("doctor-patient-list");
+  if (!out) return;
+  out.innerHTML = "";
+  if (!items || !items.length) {
+    out.innerHTML = "<article class='result-card'>No linked patients yet.</article>";
+    return;
+  }
+  items.forEach((p) => {
+    const card = document.createElement("article");
+    card.className = "result-card history-row";
+    card.innerHTML = `
+      <div>
+        <h4>${p.name || "Patient"}</h4>
+        <p><strong>Phone:</strong> ${p.phone || "-"}</p>
+        <p><strong>Consultations:</strong> ${p.consultation_count || 0}</p>
+      </div>
+      <button class="btn secondary" type="button">Show Details</button>
+    `;
+    card.querySelector("button")?.addEventListener("click", async () => {
+      if (!state.doctorId) return;
+      try {
+        const detail = await getJson(`/doctor/${state.doctorId}/patient/${p.patient_id}`);
+        renderDoctorPatientDetails(detail);
+      } catch (err) {
+        toast(`Failed to load patient details: ${err.message}`);
+      }
+    });
+    out.appendChild(card);
+  });
+}
+
+function renderDoctorConsultRequests(items) {
+  const out = el("doctor-consult-list");
+  if (!out) return;
+  out.innerHTML = "";
+  if (!items || !items.length) {
+    out.innerHTML = "<article class='result-card'>No consult requests right now.</article>";
+    return;
+  }
+  items.forEach((r) => {
+    const card = document.createElement("article");
+    card.className = "result-card";
+    const reason = r.reason && String(r.reason).trim() ? r.reason : "No reason added.";
+    const videoLink = r.video_link ? `<a class="btn ghost" target="_blank" rel="noopener" href="${r.video_link}">Open Video Call</a>` : "";
+    card.innerHTML = `
+      <h4>${r.patient_name || "Patient"}</h4>
+      <p><strong>Status:</strong> ${r.status || "pending"}</p>
+      <p><strong>Reason:</strong> ${reason}</p>
+      <p><strong>Created:</strong> ${r.created_at || "-"}</p>
+      <div class="inline-actions">
+        <button class="btn primary req-accept" type="button">Accept</button>
+        <button class="btn danger req-reject" type="button">Reject</button>
+        ${videoLink}
+      </div>
+    `;
+    card.querySelector(".req-accept")?.addEventListener("click", async () => {
+      if (!state.doctorId) return;
+      try {
+        await postJson(`/doctor/${state.doctorId}/consult/${r.request_id}`, { action: "accepted" });
+        await loadDoctorDashboard(state.doctorId);
+        toast("Consult accepted");
+      } catch (err) {
+        toast(`Accept failed: ${err.message}`);
+      }
+    });
+    card.querySelector(".req-reject")?.addEventListener("click", async () => {
+      if (!state.doctorId) return;
+      try {
+        await postJson(`/doctor/${state.doctorId}/consult/${r.request_id}`, { action: "rejected" });
+        await loadDoctorDashboard(state.doctorId);
+        toast("Consult rejected");
+      } catch (err) {
+        toast(`Reject failed: ${err.message}`);
+      }
+    });
+    out.appendChild(card);
+  });
+}
+
+async function loadDoctorPublicList() {
+  try {
+    const data = await getJson("/doctors/public");
+    state.doctorPublicList = data.doctors || [];
+  } catch {
+    state.doctorPublicList = [];
+  }
+  const select = el("consult-doctor-select");
+  if (!select) return;
+  select.innerHTML = "";
+  if (!state.doctorPublicList.length) {
+    select.innerHTML = "<option value=''>No doctors available</option>";
+    return;
+  }
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select a doctor";
+  select.appendChild(placeholder);
+  state.doctorPublicList.forEach((d) => {
+    const opt = document.createElement("option");
+    opt.value = d.doctor_id;
+    opt.textContent = `${d.name} (${d.specialization || "General Physician"})`;
+    select.appendChild(opt);
+  });
+}
+
+async function loadDoctorDashboard(doctorId) {
+  const data = await getJson(`/doctor/${doctorId}/dashboard`);
+  state.doctor = data.doctor || null;
+  state.doctorPatients = data.patients || [];
+  state.doctorConsultRequests = data.consult_requests || [];
+  setTopStatus();
+
+  const name = state.doctor ? `Dr. ${state.doctor.first_name || ""} ${state.doctor.last_name || ""}`.trim() : "Doctor";
+  safeText("doctor-sidebar-user", `${name} (${state.doctor?.specialization || "General Physician"})`);
+  safeText("doctor-status-pill", `ID: ${doctorId.slice(0, 8)}...`);
+  renderDoctorOverview(state.doctor || {}, state.doctorPatients, state.doctorConsultRequests);
+  renderDoctorPatients(state.doctorPatients);
+  renderDoctorConsultRequests(state.doctorConsultRequests);
+  switchView("view-doctor-dashboard");
+  switchDoctorPanel("doctor-panel-overview");
+}
+
 async function setLocationPermission(userId) {
   if (!navigator.geolocation) {
     await postJson(`/permissions/${userId}`, { location: false, lat: null, lng: null });
@@ -613,6 +821,11 @@ function bindEvents() {
     switchAuthTab("vendor", "login");
   });
 
+  el("start-doctor")?.addEventListener("click", () => {
+    switchView("view-doctor-auth");
+    switchAuthTab("doctor", "login");
+  });
+
   document.querySelectorAll("[data-back]").forEach((btn) => {
     btn.addEventListener("click", () => switchView(btn.getAttribute("data-back")));
   });
@@ -629,6 +842,14 @@ function bindEvents() {
     if (state.vendorId) {
       try {
         await loadVendorDashboard(state.vendorId);
+      } catch {
+        switchView("view-landing");
+      }
+      return;
+    }
+    if (state.doctorId) {
+      try {
+        await loadDoctorDashboard(state.doctorId);
       } catch {
         switchView("view-landing");
       }
@@ -652,10 +873,13 @@ function bindEvents() {
     }
     localStorage.removeItem("user_id");
     localStorage.removeItem("vendor_id");
+    localStorage.removeItem("doctor_id");
     state.userId = "";
     state.vendorId = "";
+    state.doctorId = "";
     state.user = null;
     state.vendor = null;
+    state.doctor = null;
     setTopStatus();
     switchView("view-landing");
     toast("Session cleared");
@@ -665,6 +889,8 @@ function bindEvents() {
   el("patient-tab-signup")?.addEventListener("click", () => switchAuthTab("patient", "signup"));
   el("vendor-tab-login")?.addEventListener("click", () => switchAuthTab("vendor", "login"));
   el("vendor-tab-signup")?.addEventListener("click", () => switchAuthTab("vendor", "signup"));
+  el("doctor-tab-login")?.addEventListener("click", () => switchAuthTab("doctor", "login"));
+  el("doctor-tab-signup")?.addEventListener("click", () => switchAuthTab("doctor", "signup"));
 
   document.querySelectorAll(".nav-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -677,6 +903,13 @@ function bindEvents() {
     btn.addEventListener("click", () => {
       const panel = btn.getAttribute("data-vendor-panel");
       if (panel) switchVendorPanel(panel);
+    });
+  });
+
+  document.querySelectorAll(".doctor-nav-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const panel = btn.getAttribute("data-doctor-panel");
+      if (panel) switchDoctorPanel(panel);
     });
   });
 
@@ -779,6 +1012,50 @@ function bindEvents() {
       }
     } catch (err) {
       safeText("vendor-login-msg", `Login failed: ${err.message}`);
+    }
+  });
+
+  el("doctor-signup-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const payload = {
+      first_name: String(fd.get("first_name") || "").trim(),
+      last_name: String(fd.get("last_name") || "").trim(),
+      phone: String(fd.get("phone") || "").trim(),
+      email: String(fd.get("email") || "").trim(),
+      specialization: String(fd.get("specialization") || "").trim(),
+      password: String(fd.get("password") || "")
+    };
+    try {
+      await postJson("/doctor/signup", payload);
+      localStorage.setItem("doctor_phone", payload.phone);
+      localStorage.setItem("doctor_password", payload.password);
+      safeText("doctor-signup-msg", "Doctor account created. Please login.");
+      switchAuthTab("doctor", "login");
+      toast("Doctor account created");
+    } catch (err) {
+      safeText("doctor-signup-msg", `Signup failed: ${err.message}`);
+    }
+  });
+
+  el("doctor-login-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const fd = new FormData(event.target);
+    const payload = {
+      phone: String(fd.get("phone") || "").trim(),
+      password: String(fd.get("password") || "")
+    };
+    try {
+      const res = await postJson("/doctor/login", payload);
+      state.doctorId = res.doctor_id;
+      localStorage.setItem("doctor_id", state.doctorId);
+      localStorage.setItem("doctor_phone", payload.phone);
+      localStorage.setItem("doctor_password", payload.password);
+      safeText("doctor-login-msg", "Doctor login successful.");
+      await loadDoctorDashboard(state.doctorId);
+      toast("Doctor dashboard ready");
+    } catch (err) {
+      safeText("doctor-login-msg", `Login failed: ${err.message}`);
     }
   });
 
@@ -886,8 +1163,34 @@ function bindEvents() {
     await loadPatientDashboard(state.userId);
   });
 
-  el("btn-call")?.addEventListener("click", () => {
-    window.location.href = "tel:7839010007";
+  el("btn-request-consult")?.addEventListener("click", async () => {
+    if (!state.userId) {
+      toast("Please login first");
+      return;
+    }
+    const doctorId = String(el("consult-doctor-select")?.value || "").trim();
+    if (!doctorId) {
+      safeText("consult-request-msg", "Please select a doctor.");
+      return;
+    }
+    const reason = String(el("consult-reason")?.value || "").trim();
+    try {
+      const out = await postJson("/consult/request", {
+        user_id: state.userId,
+        doctor_id: doctorId,
+        reason
+      });
+      const msg = out.video_link
+        ? `Request sent. Join video call: ${out.video_link}`
+        : "Request sent to doctor.";
+      safeText("consult-request-msg", msg);
+      toast("Consult request sent");
+      if (out.video_link) {
+        window.open(out.video_link, "_blank", "noopener");
+      }
+    } catch (err) {
+      safeText("consult-request-msg", `Request failed: ${err.message}`);
+    }
   });
 
   el("btn-upload")?.addEventListener("click", async () => {
@@ -989,6 +1292,48 @@ function bindEvents() {
       { timeout: 10000 }
     );
   });
+
+  el("doctor-prescription-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!state.doctorId) return;
+    const fd = new FormData(event.target);
+    const patientId = String(fd.get("patient_id") || "").trim();
+    const consultationId = String(fd.get("consultation_id") || "").trim();
+    const note = String(fd.get("note") || "").trim();
+    const medicines = String(fd.get("medicines") || "").trim();
+    const followUp = String(fd.get("follow_up") || "").trim();
+    const photoInput = el("doctor-presc-photos");
+    if (!patientId || !note) {
+      safeText("doctor-prescription-msg", "Patient ID and note are required.");
+      return;
+    }
+    try {
+      const form = new FormData();
+      form.append("patient_id", patientId);
+      if (consultationId) form.append("consultation_id", consultationId);
+      form.append("note", note);
+      form.append("medicines", medicines);
+      form.append("follow_up", followUp);
+      if (photoInput?.files?.length) {
+        Array.from(photoInput.files).forEach((f) => form.append("files", f));
+      }
+      const res = await fetch(`/doctor/${state.doctorId}/prescription_with_files`, {
+        method: "POST",
+        body: form
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const out = await res.json();
+      const prescId = out?.prescription?.prescription_id || "saved";
+      const count = Array.isArray(out?.uploaded_files) ? out.uploaded_files.length : 0;
+      safeText("doctor-prescription-msg", `Prescription sent (${prescId}). Uploaded photos: ${count}.`);
+      event.target.reset();
+      await loadDoctorDashboard(state.doctorId);
+      switchDoctorPanel("doctor-panel-prescribe");
+      toast("Prescription shared");
+    } catch (err) {
+      safeText("doctor-prescription-msg", `Failed: ${err.message}`);
+    }
+  });
 }
 
 function restoreRememberedCreds() {
@@ -996,17 +1341,22 @@ function restoreRememberedCreds() {
   const patientPw = localStorage.getItem("patient_password");
   const vendorPhone = localStorage.getItem("vendor_phone");
   const vendorPw = localStorage.getItem("vendor_password");
+  const doctorPhone = localStorage.getItem("doctor_phone");
+  const doctorPw = localStorage.getItem("doctor_password");
 
   if (patientPhone && el("patient-login-phone")) el("patient-login-phone").value = patientPhone;
   if (patientPw && el("patient-login-password")) el("patient-login-password").value = patientPw;
   if (vendorPhone && el("vendor-login-phone")) el("vendor-login-phone").value = vendorPhone;
   if (vendorPw && el("vendor-login-password")) el("vendor-login-password").value = vendorPw;
+  if (doctorPhone && el("doctor-login-phone")) el("doctor-login-phone").value = doctorPhone;
+  if (doctorPw && el("doctor-login-password")) el("doctor-login-password").value = doctorPw;
 }
 
 window.addEventListener("load", async () => {
   bindEvents();
   restoreRememberedCreds();
   setTopStatus();
+  await loadDoctorPublicList();
 
   if (state.userId) {
     try {
@@ -1032,6 +1382,20 @@ window.addEventListener("load", async () => {
       localStorage.removeItem("vendor_id");
       state.vendorId = "";
       state.vendor = null;
+      setTopStatus();
+    }
+  }
+
+  if (state.doctorId) {
+    try {
+      await loadDoctorDashboard(state.doctorId);
+      toast("Restored previous doctor session");
+      return;
+    } catch (err) {
+      console.error(err);
+      localStorage.removeItem("doctor_id");
+      state.doctorId = "";
+      state.doctor = null;
       setTopStatus();
     }
   }

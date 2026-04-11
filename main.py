@@ -6,7 +6,7 @@ import os
 from typing import Dict, Optional
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -28,6 +28,7 @@ def _safe_mkdir(path: str):
 _safe_mkdir(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 VENDORS_FILE = os.path.join(DATA_DIR, "vendors.json")
+DOCTORS_FILE = os.path.join(DATA_DIR, "doctors.json")
 NOTICES_FILE = os.path.join(DATA_DIR, "notices.json")
 BUGS_FILE = os.path.join(DATA_DIR, "bugs.json")
 _safe_mkdir(os.path.join(DATA_DIR, "uploads"))
@@ -53,6 +54,7 @@ def _save_json(path, data):
 
 users: Dict[str, dict] = _load_json(USERS_FILE, {})
 vendors: Dict[str, dict] = _load_json(VENDORS_FILE, {})
+doctors: Dict[str, dict] = _load_json(DOCTORS_FILE, {})
 notices = _load_json(NOTICES_FILE, [])
 bugs = _load_json(BUGS_FILE, [])
 admin_sessions = set()
@@ -222,6 +224,39 @@ class DoctorNoteInput(BaseModel):
     doctor_name: Optional[str] = "Doctor"
 
 
+class DoctorSignup(BaseModel):
+    first_name: str
+    last_name: str
+    phone: str
+    email: Optional[str] = None
+    specialization: Optional[str] = None
+    password: str
+
+
+class DoctorLogin(BaseModel):
+    phone: str
+    password: str
+
+
+class ConsultRequestInput(BaseModel):
+    user_id: str
+    doctor_id: str
+    reason: Optional[str] = None
+
+
+class DoctorPrescriptionInput(BaseModel):
+    patient_id: str
+    consultation_id: Optional[str] = None
+    note: str
+    medicines: Optional[str] = None
+    follow_up: Optional[str] = None
+
+
+class DoctorConsultAction(BaseModel):
+    action: str = "accepted"
+    video_link: Optional[str] = None
+
+
 def require_admin(x_admin_token: Optional[str] = Header(default=None, alias="X-Admin-Token")):
     if not x_admin_token or x_admin_token not in admin_sessions:
         raise HTTPException(status_code=401, detail="Admin authentication required")
@@ -259,7 +294,10 @@ def patient_signup(p: PatientSignup):
         'email': p.email,
         'password_hash': _hash_password(p.password),
         'permissions': {},
-        'consultations': []
+        'consultations': [],
+        'assigned_doctor_id': None,
+        'consult_requests': [],
+        'prescriptions': []
     }
     _save_json(USERS_FILE, users)
     return {'user_id': uid}
@@ -495,6 +533,7 @@ def upload_file(user_id: str, file: UploadFile = File(...)):
         'consultation_id': str(uuid4()),
         'title': f"Consultation {len(u.get('consultations', [])) + 1}",
         'date': uploaded_at,
+        'doctor_id': u.get('assigned_doctor_id'),
         'files': [{
             'filename': safe_name,
             'url': f"/uploads/{user_id}/{safe_name}",
@@ -518,6 +557,318 @@ def medical_history(user_id: str):
     if not u:
         raise HTTPException(status_code=404, detail='User not found')
     return {'user_id': user_id, 'consultations': u.get('consultations', [])}
+
+
+def _patient_display_name(u: dict) -> str:
+    first = (u.get('first_name') or '').strip()
+    last = (u.get('last_name') or '').strip()
+    name = f"{first} {last}".strip()
+    return name or "Patient"
+
+
+def _doctor_display_name(d: dict) -> str:
+    first = (d.get('first_name') or '').strip()
+    last = (d.get('last_name') or '').strip()
+    name = f"Dr. {first} {last}".strip()
+    return name if name != "Dr." else "Doctor"
+
+
+def _ensure_patient_link(doctor_id: str, patient_id: str):
+    d = doctors.get(doctor_id)
+    if not d:
+        return
+    patient_ids = d.setdefault('patient_ids', [])
+    if patient_id not in patient_ids:
+        patient_ids.append(patient_id)
+
+
+@app.post('/doctor/signup')
+def doctor_signup(data: DoctorSignup):
+    phone_norm = normalize_phone(data.phone)
+    for d in doctors.values():
+        if normalize_phone(d.get('phone')) == phone_norm:
+            raise HTTPException(status_code=400, detail='Doctor phone already registered')
+    did = str(uuid4())
+    doctors[did] = {
+        'id': did,
+        'first_name': data.first_name,
+        'last_name': data.last_name,
+        'phone': data.phone,
+        'email': data.email,
+        'specialization': (data.specialization or '').strip(),
+        'password_hash': _hash_password(data.password),
+        'patient_ids': [],
+        'consult_requests': []
+    }
+    _save_json(DOCTORS_FILE, doctors)
+    return {'doctor_id': did}
+
+
+@app.post('/doctor/login')
+def doctor_login(data: DoctorLogin):
+    login_phone = normalize_phone(data.phone)
+    for did, d in doctors.items():
+        d_phone = normalize_phone(d.get('phone'))
+        if (d_phone and d_phone == login_phone) or str(did) == str(data.phone):
+            if d.get('password_hash') != _hash_password(data.password):
+                raise HTTPException(status_code=401, detail='Invalid phone or password')
+            return {'doctor_id': did}
+    raise HTTPException(status_code=401, detail='Invalid phone or password')
+
+
+@app.get('/doctors/public')
+def doctors_public():
+    items = []
+    for did, d in doctors.items():
+        items.append({
+            'doctor_id': did,
+            'name': _doctor_display_name(d),
+            'specialization': d.get('specialization') or 'General Physician',
+            'phone': d.get('phone') or ''
+        })
+    return {'doctors': items}
+
+
+@app.post('/consult/request')
+def consult_request(data: ConsultRequestInput):
+    u = users.get(data.user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail='Patient not found')
+    d = doctors.get(data.doctor_id)
+    if not d:
+        raise HTTPException(status_code=404, detail='Doctor not found')
+    request_id = str(uuid4())
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    room_name = f"rural-health-{request_id[:8]}"
+    video_link = f"https://meet.jit.si/{room_name}"
+    req = {
+        'request_id': request_id,
+        'patient_id': data.user_id,
+        'patient_name': _patient_display_name(u),
+        'doctor_id': data.doctor_id,
+        'doctor_name': _doctor_display_name(d),
+        'reason': (data.reason or '').strip(),
+        'status': 'pending',
+        'created_at': now,
+        'video_link': video_link
+    }
+    u.setdefault('consult_requests', []).append(req)
+    u['assigned_doctor_id'] = data.doctor_id
+    _ensure_patient_link(data.doctor_id, data.user_id)
+    d.setdefault('consult_requests', []).append(req.copy())
+    _save_json(USERS_FILE, users)
+    _save_json(DOCTORS_FILE, doctors)
+    return req
+
+
+@app.get('/doctor/{doctor_id}/dashboard')
+def doctor_dashboard(doctor_id: str):
+    d = doctors.get(doctor_id)
+    if not d:
+        raise HTTPException(status_code=404, detail='Doctor not found')
+    patient_cards = []
+    for pid in d.get('patient_ids', []):
+        u = users.get(pid)
+        if not u:
+            continue
+        patient_cards.append({
+            'patient_id': pid,
+            'name': _patient_display_name(u),
+            'phone': u.get('phone') or '',
+            'consultation_count': len(u.get('consultations', []))
+        })
+    return {
+        'doctor': {k: v for k, v in d.items() if k != 'password_hash'},
+        'patients': patient_cards,
+        'consult_requests': d.get('consult_requests', [])
+    }
+
+
+@app.get('/doctor/{doctor_id}/patients')
+def doctor_patients(doctor_id: str):
+    d = doctors.get(doctor_id)
+    if not d:
+        raise HTTPException(status_code=404, detail='Doctor not found')
+    items = []
+    for pid in d.get('patient_ids', []):
+        u = users.get(pid)
+        if not u:
+            continue
+        items.append({
+            'patient_id': pid,
+            'name': _patient_display_name(u),
+            'phone': u.get('phone') or '',
+            'email': u.get('email') or '',
+            'consultation_count': len(u.get('consultations', []))
+        })
+    return {'patients': items}
+
+
+@app.get('/doctor/{doctor_id}/patient/{patient_id}')
+def doctor_patient_details(doctor_id: str, patient_id: str):
+    d = doctors.get(doctor_id)
+    if not d:
+        raise HTTPException(status_code=404, detail='Doctor not found')
+    if patient_id not in d.get('patient_ids', []):
+        raise HTTPException(status_code=403, detail='Patient is not linked to this doctor')
+    u = users.get(patient_id)
+    if not u:
+        raise HTTPException(status_code=404, detail='Patient not found')
+    return {
+        'patient': {k: v for k, v in u.items() if k != 'password_hash'},
+        'consultations': u.get('consultations', []),
+        'prescriptions': u.get('prescriptions', [])
+    }
+
+
+@app.post('/doctor/{doctor_id}/consult/{request_id}')
+def doctor_consult_action(doctor_id: str, request_id: str, data: DoctorConsultAction):
+    d = doctors.get(doctor_id)
+    if not d:
+        raise HTTPException(status_code=404, detail='Doctor not found')
+    req = None
+    for r in d.get('consult_requests', []):
+        if str(r.get('request_id')) == str(request_id):
+            req = r
+            break
+    if req is None:
+        raise HTTPException(status_code=404, detail='Consult request not found')
+    action = (data.action or 'accepted').strip().lower()
+    if action not in ['accepted', 'rejected', 'completed']:
+        raise HTTPException(status_code=400, detail='Invalid action')
+    req['status'] = action
+    if data.video_link:
+        req['video_link'] = data.video_link.strip()
+    pid = req.get('patient_id')
+    u = users.get(pid) if pid else None
+    if u:
+        for r in u.get('consult_requests', []):
+            if str(r.get('request_id')) == str(request_id):
+                r['status'] = action
+                if req.get('video_link'):
+                    r['video_link'] = req.get('video_link')
+                break
+        _save_json(USERS_FILE, users)
+    _save_json(DOCTORS_FILE, doctors)
+    return {'request_id': request_id, 'status': action, 'video_link': req.get('video_link')}
+
+
+@app.post('/doctor/{doctor_id}/prescription')
+def doctor_prescription(doctor_id: str, data: DoctorPrescriptionInput):
+    d = doctors.get(doctor_id)
+    if not d:
+        raise HTTPException(status_code=404, detail='Doctor not found')
+    if data.patient_id not in d.get('patient_ids', []):
+        raise HTTPException(status_code=403, detail='Patient is not linked to this doctor')
+    u = users.get(data.patient_id)
+    if not u:
+        raise HTTPException(status_code=404, detail='Patient not found')
+    note_text = (data.note or '').strip()
+    if not note_text:
+        raise HTTPException(status_code=400, detail='Prescription note is required')
+    doctor_name = _doctor_display_name(d)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    consultations = u.setdefault('consultations', [])
+    target = None
+    if data.consultation_id:
+        for c in consultations:
+            if str(c.get('consultation_id')) == str(data.consultation_id):
+                target = c
+                break
+    if target is None:
+        target = {
+            'consultation_id': str(uuid4()),
+            'title': f"Consultation {len(consultations) + 1}",
+            'date': now,
+            'files': [],
+            'doctor_notes': []
+        }
+        consultations.append(target)
+    target.setdefault('doctor_notes', []).append({
+        'doctor_name': doctor_name,
+        'note': note_text,
+        'date': now
+    })
+    prescription = {
+        'prescription_id': str(uuid4()),
+        'doctor_id': doctor_id,
+        'doctor_name': doctor_name,
+        'patient_id': data.patient_id,
+        'consultation_id': target.get('consultation_id'),
+        'note': note_text,
+        'medicines': (data.medicines or '').strip(),
+        'follow_up': (data.follow_up or '').strip(),
+        'date': now
+    }
+    u.setdefault('prescriptions', []).append(prescription)
+    _save_json(USERS_FILE, users)
+    return prescription
+
+
+@app.post('/doctor/{doctor_id}/prescription_with_files')
+def doctor_prescription_with_files(
+    doctor_id: str,
+    patient_id: str = Form(...),
+    note: str = Form(...),
+    consultation_id: Optional[str] = Form(default=None),
+    medicines: Optional[str] = Form(default=''),
+    follow_up: Optional[str] = Form(default=''),
+    files: list[UploadFile] = File(default=[])
+):
+    # First save prescription text payload using existing flow.
+    payload = DoctorPrescriptionInput(
+        patient_id=patient_id,
+        consultation_id=consultation_id,
+        note=note,
+        medicines=medicines,
+        follow_up=follow_up
+    )
+    prescription = doctor_prescription(doctor_id, payload)
+    u = users.get(patient_id)
+    if not u:
+        raise HTTPException(status_code=404, detail='Patient not found')
+    target_consultation_id = prescription.get('consultation_id')
+    consultations = u.setdefault('consultations', [])
+    target = None
+    for c in consultations:
+        if str(c.get('consultation_id')) == str(target_consultation_id):
+            target = c
+            break
+    if target is None:
+        raise HTTPException(status_code=404, detail='Consultation not found')
+
+    uploaded_files = []
+    if files:
+        user_upload_dir = os.path.join(DATA_DIR, 'uploads', patient_id)
+        _safe_mkdir(user_upload_dir)
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        for f in files:
+            safe_name = os.path.basename(f.filename or '')
+            if not safe_name:
+                continue
+            stored_name = f"doctor_{doctor_id[:8]}_{uuid4().hex[:8]}_{safe_name}"
+            save_path = os.path.join(user_upload_dir, stored_name)
+            try:
+                with open(save_path, 'wb') as out:
+                    out.write(f.file.read())
+            finally:
+                f.file.close()
+            rec = {
+                'filename': stored_name,
+                'url': f"/uploads/{patient_id}/{stored_name}",
+                'uploaded_at': now,
+                'source': 'doctor',
+                'doctor_id': doctor_id
+            }
+            target.setdefault('files', []).append(rec)
+            uploaded_files.append(rec)
+        _save_json(USERS_FILE, users)
+
+    return {
+        'prescription': prescription,
+        'uploaded_files': uploaded_files,
+        'consultation_id': target_consultation_id
+    }
 
 
 @app.post('/doctor/notes/{user_id}')
@@ -794,6 +1145,16 @@ def admin_remove_patient(patient_id: str, _: None = Depends(require_admin)):
         raise HTTPException(status_code=404, detail='Patient not found')
     users.pop(patient_id)
     _save_json(USERS_FILE, users)
+    # unlink removed patient from doctors
+    changed = False
+    for d in doctors.values():
+        ids = d.setdefault('patient_ids', [])
+        before = len(ids)
+        d['patient_ids'] = [pid for pid in ids if str(pid) != str(patient_id)]
+        if len(d['patient_ids']) != before:
+            changed = True
+    if changed:
+        _save_json(DOCTORS_FILE, doctors)
     return {'patient_id': patient_id, 'removed': True}
 
 
@@ -801,6 +1162,10 @@ def admin_remove_patient(patient_id: str, _: None = Depends(require_admin)):
 def admin_clear_patients(_: None = Depends(require_admin)):
     users.clear()
     _save_json(USERS_FILE, users)
+    # clear linked patient lists for doctors
+    for d in doctors.values():
+        d['patient_ids'] = []
+    _save_json(DOCTORS_FILE, doctors)
     return {'cleared': 'patients', 'count': 0}
 
 
@@ -932,12 +1297,13 @@ def admin_reload_data(_: None = Depends(require_admin)):
 
 def _admin_reload_data_impl():
     # reload users/vendors/notices/bugs from disk into memory
-    global users, vendors, notices, bugs
+    global users, vendors, doctors, notices, bugs
     users = _load_json(USERS_FILE, {})
     vendors = _load_json(VENDORS_FILE, {})
+    doctors = _load_json(DOCTORS_FILE, {})
     notices = _load_json(NOTICES_FILE, [])
     bugs = _load_json(BUGS_FILE, [])
-    return {'users': len(users), 'vendors': len(vendors), 'notices': len(notices), 'bugs': len(bugs)}
+    return {'users': len(users), 'vendors': len(vendors), 'doctors': len(doctors), 'notices': len(notices), 'bugs': len(bugs)}
 
 
 @app.get('/admin/reload_data')
