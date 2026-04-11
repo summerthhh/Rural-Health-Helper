@@ -26,6 +26,9 @@
         <button id="btn-logout" class="btn danger hidden">Logout</button>
       </div>
     </header>
+    <div id="announcement-strip" class="announcement-strip hidden" aria-live="polite">
+      <div class="announcement-track" id="announcement-track"></div>
+    </div>
 
     <main>
       <section id="view-landing" class="card hero">
@@ -205,6 +208,9 @@
             <label class="full">Specialization
               <input name="specialization" placeholder="e.g. General Physician">
             </label>
+            <label class="full">License No
+              <input name="license_no" required placeholder="Medical license number">
+            </label>
             <label class="full">Password
               <input name="password" type="password" required>
             </label>
@@ -331,6 +337,11 @@
                 <span class="pill">Send to Patient</span>
               </div>
               <form id="doctor-prescription-form" class="form-grid two-col">
+                <label>Patient (linked)
+                  <select id="doctor-presc-patient-select">
+                    <option value="">Select linked patient</option>
+                  </select>
+                </label>
                 <label>Patient ID
                   <input name="patient_id" id="doctor-presc-patient-id" required placeholder="Paste patient ID">
                 </label>
@@ -410,6 +421,8 @@
                       <option value="">Loading doctors...</option>
                     </select>
                   </label>
+                  <p id="consult-doctor-phone" class="muted">Doctor phone: -</p>
+                  <a id="consult-call-doctor" class="btn ghost hidden" href="#" rel="noopener">Call Doctor</a>
                   <label>Reason (optional)
                     <input id="consult-reason" placeholder="Describe symptoms briefly">
                   </label>
@@ -464,6 +477,17 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="incoming-call-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="incoming-call-title">
+    <div class="modal-card">
+      <h3 id="incoming-call-title">Incoming Video Consult</h3>
+      <p id="incoming-call-text" class="muted"></p>
+      <div class="actions">
+        <button id="incoming-accept" class="btn primary" type="button">Accept</button>
+        <button id="incoming-reject" class="btn danger" type="button">Reject</button>
+      </div>
+    </div>
   </div>
 
   <div id="toast-wrap" aria-live="polite" aria-atomic="true"></div>

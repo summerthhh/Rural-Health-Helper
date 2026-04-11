@@ -3,6 +3,7 @@ import hashlib
 import json
 import math
 import os
+import time
 from typing import Dict, Optional
 from uuid import uuid4
 
@@ -30,6 +31,7 @@ USERS_FILE = os.path.join(DATA_DIR, "users.json")
 VENDORS_FILE = os.path.join(DATA_DIR, "vendors.json")
 DOCTORS_FILE = os.path.join(DATA_DIR, "doctors.json")
 NOTICES_FILE = os.path.join(DATA_DIR, "notices.json")
+ANNOUNCEMENTS_FILE = os.path.join(DATA_DIR, "announcements.json")
 BUGS_FILE = os.path.join(DATA_DIR, "bugs.json")
 _safe_mkdir(os.path.join(DATA_DIR, "uploads"))
 
@@ -56,6 +58,7 @@ users: Dict[str, dict] = _load_json(USERS_FILE, {})
 vendors: Dict[str, dict] = _load_json(VENDORS_FILE, {})
 doctors: Dict[str, dict] = _load_json(DOCTORS_FILE, {})
 notices = _load_json(NOTICES_FILE, [])
+announcements = _load_json(ANNOUNCEMENTS_FILE, [])
 bugs = _load_json(BUGS_FILE, [])
 admin_sessions = set()
 
@@ -136,6 +139,8 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 # Serve frontend static files from /static
 frontend_dir = os.path.join(APP_DIR, "frontend")
+if not os.path.exists(os.path.join(frontend_dir, "index.html")):
+    frontend_dir = APP_DIR
 # In serverless bundles, frontend assets may be omitted if not included explicitly.
 # check_dir=False prevents cold-start crashes when directory is absent.
 app.mount("/static", StaticFiles(directory=frontend_dir, check_dir=False), name="static")
@@ -230,6 +235,7 @@ class DoctorSignup(BaseModel):
     phone: str
     email: Optional[str] = None
     specialization: Optional[str] = None
+    license_no: str
     password: str
 
 
@@ -257,6 +263,12 @@ class DoctorConsultAction(BaseModel):
     video_link: Optional[str] = None
 
 
+class AdminBroadcastInput(BaseModel):
+    message: str
+    target: str = "all"  # all | patients | vendors | doctors
+    duration_seconds: int = 30
+
+
 def require_admin(x_admin_token: Optional[str] = Header(default=None, alias="X-Admin-Token")):
     if not x_admin_token or x_admin_token not in admin_sessions:
         raise HTTPException(status_code=401, detail="Admin authentication required")
@@ -276,6 +288,9 @@ def root():
     index_path = os.path.join(frontend_dir, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
+    root_index = os.path.join(APP_DIR, "index.html")
+    if os.path.exists(root_index):
+        return FileResponse(root_index)
     return {"message": "Frontend not found"}
 
 
@@ -596,12 +611,14 @@ def doctor_signup(data: DoctorSignup):
         'phone': data.phone,
         'email': data.email,
         'specialization': (data.specialization or '').strip(),
+        'license_no': data.license_no,
+        'status': 'approval_pending',
         'password_hash': _hash_password(data.password),
         'patient_ids': [],
         'consult_requests': []
     }
     _save_json(DOCTORS_FILE, doctors)
-    return {'doctor_id': did}
+    return {'doctor_id': did, 'status': 'approval_pending'}
 
 
 @app.post('/doctor/login')
@@ -612,7 +629,12 @@ def doctor_login(data: DoctorLogin):
         if (d_phone and d_phone == login_phone) or str(did) == str(data.phone):
             if d.get('password_hash') != _hash_password(data.password):
                 raise HTTPException(status_code=401, detail='Invalid phone or password')
-            return {'doctor_id': did}
+            status = d.get('status', 'approval_pending')
+            if status == 'blocked':
+                raise HTTPException(status_code=403, detail='Doctor account is blocked by admin')
+            if status != 'approved':
+                raise HTTPException(status_code=403, detail='Doctor signup pending admin approval')
+            return {'doctor_id': did, 'status': status}
     raise HTTPException(status_code=401, detail='Invalid phone or password')
 
 
@@ -620,6 +642,8 @@ def doctor_login(data: DoctorLogin):
 def doctors_public():
     items = []
     for did, d in doctors.items():
+        if d.get('status') != 'approved':
+            continue
         items.append({
             'doctor_id': did,
             'name': _doctor_display_name(d),
@@ -640,7 +664,7 @@ def consult_request(data: ConsultRequestInput):
     request_id = str(uuid4())
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     room_name = f"rural-health-{request_id[:8]}"
-    video_link = f"https://meet.jit.si/{room_name}"
+    video_link = f"https://talky.io/{room_name}"
     req = {
         'request_id': request_id,
         'patient_id': data.user_id,
@@ -749,6 +773,9 @@ def doctor_consult_action(doctor_id: str, request_id: str, data: DoctorConsultAc
                     r['video_link'] = req.get('video_link')
                 break
         _save_json(USERS_FILE, users)
+    # remove resolved requests from doctor's active queue so accepted/rejected disappears
+    if action in ['accepted', 'rejected', 'completed']:
+        d['consult_requests'] = [r for r in d.get('consult_requests', []) if str(r.get('request_id')) != str(request_id)]
     _save_json(DOCTORS_FILE, doctors)
     return {'request_id': request_id, 'status': action, 'video_link': req.get('video_link')}
 
@@ -1075,6 +1102,57 @@ def vendor_list(_: None = Depends(require_admin)):
     return {'vendors': list(vendors.values())}
 
 
+@app.get('/admin/doctors')
+def admin_list_doctors(_: None = Depends(require_admin)):
+    return {'doctors': [{k: v for k, v in d.items() if k != 'password_hash'} for d in doctors.values()]}
+
+
+@app.post('/admin/doctor/{doctor_id}/approve')
+def admin_approve_doctor(doctor_id: str, action: AdminAction, _: None = Depends(require_admin)):
+    d = doctors.get(doctor_id)
+    if not d:
+        raise HTTPException(status_code=404, detail='Doctor not found')
+    d['status'] = 'approved'
+    d['admin_review'] = {'action': 'approved', 'reason': action.reason}
+    _save_json(DOCTORS_FILE, doctors)
+    return {'doctor_id': doctor_id, 'status': 'approved'}
+
+
+@app.post('/admin/doctor/{doctor_id}/block')
+def admin_block_doctor(doctor_id: str, action: AdminAction, _: None = Depends(require_admin)):
+    d = doctors.get(doctor_id)
+    if not d:
+        raise HTTPException(status_code=404, detail='Doctor not found')
+    d['status'] = 'blocked'
+    d['admin_review'] = {'action': 'blocked', 'reason': action.reason}
+    _save_json(DOCTORS_FILE, doctors)
+    return {'doctor_id': doctor_id, 'status': 'blocked'}
+
+
+@app.delete('/admin/doctor/{doctor_id}')
+def admin_remove_doctor(doctor_id: str, _: None = Depends(require_admin)):
+    if doctor_id not in doctors:
+        raise HTTPException(status_code=404, detail='Doctor not found')
+    doctors.pop(doctor_id)
+    # unlink doctor assignment for patients
+    for u in users.values():
+        if str(u.get('assigned_doctor_id')) == str(doctor_id):
+            u['assigned_doctor_id'] = None
+    _save_json(DOCTORS_FILE, doctors)
+    _save_json(USERS_FILE, users)
+    return {'doctor_id': doctor_id, 'removed': True}
+
+
+@app.post('/admin/doctors/clear')
+def admin_clear_doctors(_: None = Depends(require_admin)):
+    doctors.clear()
+    for u in users.values():
+        u['assigned_doctor_id'] = None
+    _save_json(DOCTORS_FILE, doctors)
+    _save_json(USERS_FILE, users)
+    return {'cleared': 'doctors', 'count': 0}
+
+
 @app.delete('/admin/vendor/{vendor_id}')
 def admin_remove_vendor(vendor_id: str, _: None = Depends(require_admin)):
     if vendor_id not in vendors:
@@ -1277,6 +1355,54 @@ def admin_list_notices(_: None = Depends(require_admin)):
     return {'notices': notices}
 
 
+@app.post('/admin/broadcast')
+def admin_broadcast(data: AdminBroadcastInput, _: None = Depends(require_admin)):
+    msg = (data.message or '').strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail='Message is required')
+    target = (data.target or 'all').strip().lower()
+    if target not in ['all', 'patients', 'vendors', 'doctors']:
+        raise HTTPException(status_code=400, detail='Invalid target')
+    duration = int(data.duration_seconds or 30)
+    if duration < 5:
+        duration = 5
+    if duration > 3600:
+        duration = 3600
+    now = int(time.time())
+    announcement = {
+        'id': str(uuid4()),
+        'message': msg,
+        'target': target,
+        'start_ts': now,
+        'end_ts': now + duration,
+        'duration_seconds': duration
+    }
+    announcements.append(announcement)
+    _save_json(ANNOUNCEMENTS_FILE, announcements)
+    return announcement
+
+
+@app.get('/broadcast/{role}')
+def get_broadcast(role: str):
+    r = (role or '').strip().lower()
+    if r not in ['patient', 'vendor', 'doctor']:
+        raise HTTPException(status_code=400, detail='Invalid role')
+    target_map = {
+        'patient': 'patients',
+        'vendor': 'vendors',
+        'doctor': 'doctors'
+    }
+    now = int(time.time())
+    active = []
+    for a in announcements:
+        if int(a.get('end_ts', 0)) < now:
+            continue
+        t = str(a.get('target', 'all')).lower()
+        if t in ['all', target_map[r]]:
+            active.append(a)
+    return {'announcements': active}
+
+
 @app.post('/admin/bugs')
 def admin_report_bug(title: str, details: Optional[str] = None, _: None = Depends(require_admin)):
     b = {'id': str(uuid4()), 'title': title, 'details': details}
@@ -1297,13 +1423,21 @@ def admin_reload_data(_: None = Depends(require_admin)):
 
 def _admin_reload_data_impl():
     # reload users/vendors/notices/bugs from disk into memory
-    global users, vendors, doctors, notices, bugs
+    global users, vendors, doctors, notices, announcements, bugs
     users = _load_json(USERS_FILE, {})
     vendors = _load_json(VENDORS_FILE, {})
     doctors = _load_json(DOCTORS_FILE, {})
     notices = _load_json(NOTICES_FILE, [])
+    announcements = _load_json(ANNOUNCEMENTS_FILE, [])
     bugs = _load_json(BUGS_FILE, [])
-    return {'users': len(users), 'vendors': len(vendors), 'doctors': len(doctors), 'notices': len(notices), 'bugs': len(bugs)}
+    return {
+        'users': len(users),
+        'vendors': len(vendors),
+        'doctors': len(doctors),
+        'notices': len(notices),
+        'announcements': len(announcements),
+        'bugs': len(bugs)
+    }
 
 
 @app.get('/admin/reload_data')

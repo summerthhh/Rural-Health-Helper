@@ -1,13 +1,24 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "builds": [
-    { "src": "*.html", "use": "@vercel/static" },
-    { "src": "*.css", "use": "@vercel/static" },
-    { "src": "*.js", "use": "@vercel/static" },
-    { "src": "main.py", "use": "@vercel/python" }
+    {
+      "src": "main.py",
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": [
+          "frontend/**",
+          "index.html",
+          "admin.html",
+          "app.js",
+          "styles.css"
+        ]
+      }
+    }
   ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/main.py" }
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "main.py"
+    }
   ]
 }

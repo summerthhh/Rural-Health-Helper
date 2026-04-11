@@ -107,6 +107,15 @@
       font: inherit;
     }
 
+    select {
+      width: 100%;
+      border: 1px solid #cfd8cd;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font: inherit;
+      background: #fff;
+    }
+
     .list { display: grid; gap: 10px; }
 
     .item {
@@ -140,11 +149,12 @@
     <div class="top card">
       <div>
         <h1>Super Admin Console</h1>
-        <p class="muted">Manage patients and vendors quickly</p>
+        <p class="muted">Manage patients, vendors, doctors and broadcasts</p>
       </div>
       <div class="counts">
         <span class="pill" id="count-patients">Patients: 0</span>
         <span class="pill" id="count-vendors">Vendors: 0</span>
+        <span class="pill" id="count-doctors">Doctors: 0</span>
       </div>
     </div>
 
@@ -174,6 +184,7 @@
             <button class="btn warn" id="btn-merge">Merge Duplicates</button>
             <button class="btn danger" id="btn-clear-patients">Clear All Patients</button>
             <button class="btn danger" id="btn-clear-vendors">Clear All Vendors</button>
+            <button class="btn danger" id="btn-clear-doctors">Clear All Doctors</button>
           </div>
         </div>
 
@@ -189,6 +200,39 @@
             <h3>Patients</h3>
           </div>
           <div class="list" id="patients-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <h3>Doctors</h3>
+          </div>
+          <div class="list" id="doctors-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <h3>Broadcast Banner</h3>
+          </div>
+          <form id="broadcast-form">
+            <label>Target Audience
+              <select name="target" required>
+                <option value="all">All</option>
+                <option value="patients">All Patients</option>
+                <option value="vendors">All Vendors</option>
+                <option value="doctors">All Doctors</option>
+              </select>
+            </label>
+            <label>Message
+              <input name="message" required placeholder="Type broadcast message">
+            </label>
+            <label>Duration (seconds)
+              <input name="duration_seconds" type="number" min="5" max="3600" value="30" required>
+            </label>
+            <div class="actions">
+              <button class="btn" type="submit">Send Broadcast</button>
+            </div>
+          </form>
+          <p id="broadcast-result" class="muted"></p>
         </div>
       </section>
     </div>
@@ -241,9 +285,10 @@
       el('admin-area').classList.toggle('hidden', !show);
     }
 
-    function renderCounts(patients, vendors) {
+    function renderCounts(patients, vendors, doctors) {
       el('count-patients').textContent = `Patients: ${patients.length}`;
       el('count-vendors').textContent = `Vendors: ${vendors.length}`;
+      el('count-doctors').textContent = `Doctors: ${doctors.length}`;
     }
 
     async function loadVendors() {
@@ -338,9 +383,66 @@
       return data.patients;
     }
 
+    async function loadDoctors() {
+      const data = await request('/admin/doctors');
+      const list = el('doctors-list');
+      list.innerHTML = '';
+
+      if (!data.doctors || data.doctors.length === 0) {
+        list.innerHTML = '<div class="muted">No doctors found.</div>';
+        return [];
+      }
+
+      data.doctors.forEach((d) => {
+        const card = document.createElement('article');
+        card.className = 'item';
+        card.innerHTML = `
+          <div class="row">
+            <strong>Dr. ${d.first_name || ''} ${d.last_name || ''}</strong>
+            <span class="pill">${d.status || 'unknown'}</span>
+          </div>
+          <div class="muted">${d.phone || '-'} | ${d.specialization || 'General Physician'}</div>
+          <div class="muted">License: ${d.license_no || '-'}</div>
+          <div class="actions">
+            <button class="btn" data-action="approve">Approve</button>
+            <button class="btn warn" data-action="block">Block</button>
+            <button class="btn danger" data-action="delete">Delete</button>
+          </div>
+        `;
+
+        card.querySelector('[data-action="approve"]').onclick = async () => {
+          await request(`/admin/doctor/${d.id}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: 'Approved from admin console' })
+          });
+          await loadAll();
+        };
+
+        card.querySelector('[data-action="block"]').onclick = async () => {
+          await request(`/admin/doctor/${d.id}/block`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: 'Blocked from admin console' })
+          });
+          await loadAll();
+        };
+
+        card.querySelector('[data-action="delete"]').onclick = async () => {
+          if (!confirm('Delete this doctor permanently?')) return;
+          await request(`/admin/doctor/${d.id}`, { method: 'DELETE' });
+          await loadAll();
+        };
+
+        list.appendChild(card);
+      });
+
+      return data.doctors;
+    }
+
     async function loadAll() {
-      const [vendors, patients] = await Promise.all([loadVendors(), loadPatients()]);
-      renderCounts(patients, vendors);
+      const [vendors, patients, doctors] = await Promise.all([loadVendors(), loadPatients(), loadDoctors()]);
+      renderCounts(patients, vendors, doctors);
     }
 
     el('login-form').addEventListener('submit', async (e) => {
@@ -356,7 +458,9 @@
           })
         });
 
-        const out = await response.json();
+        const text = await response.text();
+        let out = {};
+        try { out = JSON.parse(text); } catch { out = { detail: text || 'Login failed' }; }
         if (!response.ok) {
           setMsg(out.detail || 'Login failed');
           return;
@@ -375,9 +479,10 @@
       setToken('');
       toggleAdminArea(false);
       setMsg('Logged out');
-      renderCounts([], []);
+      renderCounts([], [], []);
       el('vendors-list').innerHTML = '';
       el('patients-list').innerHTML = '';
+      el('doctors-list').innerHTML = '';
     });
 
     el('btn-refresh').addEventListener('click', async () => {
@@ -430,6 +535,41 @@
         await loadAll();
       } catch (err) {
         alert('Clear failed: ' + err.message);
+      }
+    });
+
+    el('btn-clear-doctors').addEventListener('click', async () => {
+      if (!confirm('Clear ALL doctor data (including pending/approved/blocked)?')) return;
+      try {
+        await request('/admin/doctors/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        alert('Doctors cleared successfully.');
+        await loadAll();
+      } catch (err) {
+        alert('Clear failed: ' + err.message);
+      }
+    });
+
+    el('broadcast-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      try {
+        const out = await request('/admin/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            target: fd.get('target'),
+            message: fd.get('message'),
+            duration_seconds: Number(fd.get('duration_seconds'))
+          })
+        });
+        el('broadcast-result').textContent = `Broadcast sent (${out.target}) for ${out.duration_seconds}s`;
+        e.target.reset();
+      } catch (err) {
+        el('broadcast-result').textContent = 'Broadcast failed: ' + err.message;
       }
     });
 
