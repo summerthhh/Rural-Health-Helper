@@ -8,6 +8,9 @@
     { "src": "main.py", "use": "@vercel/python" }
   ],
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/main.py" }
+    {
+      "source": "/:path((?!.*\\.(css|js|html|png|jpg|jpeg|svg|ico|json)$).*)",
+      "destination": "/main.py"
+    }
   ]
 }
