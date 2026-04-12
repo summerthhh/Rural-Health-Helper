@@ -701,17 +701,25 @@
           <input
             type="tel"
             name="phone"
+            id="adminPhoneInput"
             required
             autocomplete="username"
           >
 
           <label style="margin-top: 16px;">Password</label>
-          <input
-            type="password"
-            name="password"
-            required
-            autocomplete="current-password"
-          >
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <input
+              type="password"
+              name="password"
+              id="adminPasswordInput"
+              required
+              autocomplete="current-password"
+              style="flex: 1;"
+            >
+            <button type="button" id="togglePassword" class="btn btn-ghost" style="padding: 11px 14px; min-width: auto; width: auto;">
+              👁️
+            </button>
+          </div>
 
           <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 24px; justify-content: center;">
             Sign In
@@ -900,8 +908,11 @@
     }
 
     function showAdminArea(show) {
-      el('loginSection').style.display = show ? 'none' : 'block';
-      el('adminArea').classList.toggle('show', show);
+      const loginSection = el('login-section');
+      const adminArea = el('adminArea');
+
+      if (loginSection) loginSection.style.display = show ? 'none' : 'block';
+      if (adminArea) adminArea.classList.toggle('show', show);
     }
 
     async function loadPatients() {
@@ -1121,6 +1132,23 @@
     }
 
     // Event Listeners
+
+    // Password visibility toggle
+    el('togglePassword')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const passwordInput = el('adminPasswordInput');
+      const toggleBtn = el('togglePassword');
+      if (!passwordInput) return;
+
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        if (toggleBtn) toggleBtn.textContent = '🙈';
+      } else {
+        passwordInput.type = 'password';
+        if (toggleBtn) toggleBtn.textContent = '👁️';
+      }
+    });
+
     el('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       try {
