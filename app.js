@@ -1091,26 +1091,10 @@ function bindEvents() {
 
     try {
       const res = await postJson("/patient/signup", payload);
-      state.userId = res.user_id;
-      state.user = res.user || null;
-      state.vendorId = "";
-      state.vendor = null;
-      state.doctorId = "";
-      state.doctor = null;
-      localStorage.setItem("user_id", state.userId);
-      localStorage.removeItem("vendor_id");
-      localStorage.removeItem("vendor_token");
-      localStorage.removeItem("doctor_id");
-      localStorage.removeItem("doctor_token");
-      localStorage.setItem("patient_phone", payload.phone);
-      localStorage.setItem("patient_password", payload.password);
-      localStorage.setItem("user_type", "patient");
-      localStorage.setItem("last_login", new Date().toISOString());
-      if (res.user) profileCache.set(state.userId, res.user);
-
-      safeText("patient-signup-msg", "Account created and signed in.");
-      toast("Patient account created and logged in");
-      await loadPatientDashboard(state.userId);
+      safeText("patient-signup-msg", "Account created successfully. Please log in.");
+      toast("Account created. Please sign in to continue.");
+      el("patient-signup-form")?.reset();
+      switchAuthTab("patient", "login");
     } catch (err) {
       safeText("patient-signup-msg", `Signup failed: ${err.message}`);
     }
