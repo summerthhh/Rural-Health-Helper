@@ -6,11 +6,5 @@
     { "src": "*.css", "use": "@vercel/static" },
     { "src": "*.js", "use": "@vercel/static" },
     { "src": "main.py", "use": "@vercel/python" }
-  ],
-  "rewrites": [
-    {
-      "source": "/((?!.*\\.(css|js|html|png|jpg|jpeg|svg|ico|json)$).*)",
-      "destination": "/main.py"
-    }
   ]
 }
