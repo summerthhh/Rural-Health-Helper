@@ -32,15 +32,15 @@
     }
 
     html.dark-mode {
-      --bg-primary: #0f172e;
-      --bg-secondary: #1a202c;
-      --card-bg: #1f2937;
-      --text-primary: #f9fafb;
-      --text-secondary: #d1d5db;
-      --border-color: #374151;
-      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
-      --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+      --bg-primary: #000000;
+      --bg-secondary: #0a0e27;
+      --card-bg: #0f1629;
+      --text-primary: #ffffff;
+      --text-secondary: #b0b8cc;
+      --border-color: #1e2749;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.6);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.8);
+      --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.9);
     }
 
     html {
@@ -189,6 +189,12 @@
       background: var(--card-bg);
       color: var(--text-primary);
       transition: var(--transition);
+    }
+
+    html.dark-mode input, html.dark-mode select, html.dark-mode textarea {
+      background: #0f1629;
+      color: #ffffff;
+      border-color: #1e2749;
     }
 
     input:focus, select:focus, textarea:focus {
@@ -525,11 +531,6 @@
           </button>
         </form>
 
-        <div style="text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 0.9rem;">
-          <p>Demo Credentials:</p>
-          <p style="margin: 4px 0;">Phone: <strong>1234567890</strong></p>
-          <p style="margin: 4px 0;">Password: <strong>0987654321</strong></p>
-        </div>
       </div>
     </div>
 
