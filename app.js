@@ -8,12 +8,16 @@
 
 const apiBase = "";
 
+// Enhanced state management with profile persistence
 const state = {
   activeView: "view-landing",
   activePanel: "panel-profile",
   userId: localStorage.getItem("user_id") || "",
   vendorId: localStorage.getItem("vendor_id") || "",
   doctorId: localStorage.getItem("doctor_id") || "",
+  userToken: localStorage.getItem("user_token") || "",
+  vendorToken: localStorage.getItem("vendor_token") || "",
+  doctorToken: localStorage.getItem("doctor_token") || "",
   user: null,
   vendor: null,
   doctor: null,
@@ -23,6 +27,28 @@ const state = {
   medicalHistory: [],
   incomingRequestId: "",
   doctorPollHandle: null
+};
+
+// User profile cache - stores user data locally for quick access
+const profileCache = {
+  get: (userId) => {
+    try {
+      const cached = localStorage.getItem(`profile_${userId}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  },
+  set: (userId, profileData) => {
+    try {
+      localStorage.setItem(`profile_${userId}`, JSON.stringify(profileData));
+    } catch (e) {
+      console.warn("Profile cache storage failed:", e);
+    }
+  },
+  clear: (userId) => {
+    localStorage.removeItem(`profile_${userId}`);
+  }
 };
 
 const ids = [
@@ -1204,9 +1230,20 @@ function bindEvents() {
     try {
       const res = await postJson("/patient/login", payload);
       state.userId = res.user_id;
+      state.userToken = res.token || "";
+
+      // Store session data persistently
       localStorage.setItem("user_id", state.userId);
+      localStorage.setItem("user_token", state.userToken);
       localStorage.setItem("patient_phone", payload.phone);
       localStorage.setItem("patient_password", payload.password);
+      localStorage.setItem("user_type", "patient");
+      localStorage.setItem("last_login", new Date().toISOString());
+
+      // Cache user profile for fast access
+      if (res.user) {
+        profileCache.set(state.userId, res.user);
+      }
 
       safeText("patient-login-msg", "Login successful.");
       await loadPatientDashboard(state.userId);
@@ -1253,9 +1290,20 @@ function bindEvents() {
     try {
       const res = await postJson("/vendor/login", payload);
       state.vendorId = res.vendor_id;
+      state.vendorToken = res.token || "";
+
+      // Store session data persistently
       localStorage.setItem("vendor_id", state.vendorId);
+      localStorage.setItem("vendor_token", state.vendorToken);
       localStorage.setItem("vendor_phone", payload.phone);
       localStorage.setItem("vendor_password", payload.password);
+      localStorage.setItem("user_type", "vendor");
+      localStorage.setItem("last_login", new Date().toISOString());
+
+      // Cache vendor profile
+      if (res.vendor) {
+        profileCache.set(state.vendorId, res.vendor);
+      }
 
       safeText("vendor-login-msg", "Vendor login successful.");
       try {

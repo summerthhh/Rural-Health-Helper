@@ -696,14 +696,18 @@
 
         <div class="message" id="loginMessage"></div>
 
-        <form id="loginForm" class="form-group">
+        <form id="loginForm" class="form-group" autocomplete="off">
           <label>Phone Number</label>
           <input
             type="tel"
             name="phone"
             id="adminPhoneInput"
             required
-            autocomplete="username"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            inputmode="numeric"
           >
 
           <label style="margin-top: 16px;">Password</label>
@@ -713,7 +717,10 @@
               name="password"
               id="adminPasswordInput"
               required
-              autocomplete="current-password"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
               style="flex: 1;"
             >
             <button type="button" id="togglePassword" class="btn btn-ghost" style="padding: 11px 14px; min-width: auto; width: auto;">
@@ -1156,29 +1163,15 @@
         const phone = String(fd.get('phone') || '').trim();
         const password = String(fd.get('password') || '').trim();
 
-        // Check against actual admin credentials
-        if (phone === '7839010007' && password === 'samerth') {
-          // Generate token for valid credentials
-          const token = 'admin_token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-          setToken(token);
-          showMessage('loginMessage', 'Login successful!', 'success');
-          showAdminArea(true);
-          await loadAll();
-          return;
-        }
-
-        // Try API login as fallback
+        // Always authenticate with server to obtain a valid admin token
         try {
           const response = await fetch('/admin/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              phone: phone,
-              password: password
-            })
+            body: JSON.stringify({ phone: phone, password: password })
           });
 
-          const data = await response.json();
+          const data = await response.json().catch(() => ({}));
           if (!response.ok) {
             showMessage('loginMessage', data.detail || 'Invalid credentials', 'error');
             return;
@@ -1188,8 +1181,10 @@
           showMessage('loginMessage', 'Login successful!', 'success');
           showAdminArea(true);
           await loadAll();
+          return;
         } catch (apiErr) {
           showMessage('loginMessage', 'Invalid phone number or password', 'error');
+          return;
         }
       } catch (err) {
         showMessage('loginMessage', 'Login error: ' + err.message, 'error');

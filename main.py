@@ -4,6 +4,8 @@ import json
 import math
 import os
 import time
+import base64
+import hmac
 from typing import Dict, Optional
 from uuid import uuid4
 
@@ -62,8 +64,44 @@ announcements = _load_json(ANNOUNCEMENTS_FILE, [])
 bugs = _load_json(BUGS_FILE, [])
 admin_sessions = set()
 
-ADMIN_PHONE = "1234567890"
-ADMIN_PASSWORD = "0987654321"
+# Admin token signing secret (stateless tokens). Set ADMIN_SECRET env var in production.
+ADMIN_SECRET = os.getenv('ADMIN_SECRET') or os.getenv('SECRET_KEY') or 'rhh_dev_secret_change_me'
+
+
+def _sign_payload_b64(b64_payload: str) -> str:
+    return hmac.new(ADMIN_SECRET.encode('utf-8'), b64_payload.encode('utf-8'), hashlib.sha256).hexdigest()
+
+
+def _make_admin_token(payload: dict, expires_seconds: int = 60 * 60 * 24 * 365 * 10):
+    # Admin tokens are long-lived by default to avoid automatic sign-out.
+    p = dict(payload)
+    p['exp'] = int(time.time()) + int(expires_seconds)
+    j = json.dumps(p, separators=(',', ':'), sort_keys=True)
+    b64 = base64.urlsafe_b64encode(j.encode('utf-8')).decode('utf-8').rstrip('=')
+    sig = _sign_payload_b64(b64)
+    return f"{b64}.{sig}"
+
+
+def _verify_admin_token(token: str) -> Optional[dict]:
+    try:
+        parts = token.split('.')
+        if len(parts) != 2:
+            return None
+        b64, sig = parts
+        expected = _sign_payload_b64(b64)
+        if not hmac.compare_digest(sig, expected):
+            return None
+        padding = '=' * (-len(b64) % 4)
+        payload_json = base64.urlsafe_b64decode(b64 + padding).decode('utf-8')
+        payload = json.loads(payload_json)
+        if int(payload.get('exp', 0)) < int(time.time()):
+            return None
+        return payload
+    except Exception:
+        return None
+
+ADMIN_PHONE = "7839010007"
+ADMIN_PASSWORD = "samerth"
 
 # Sample disease and shop data for search demo
 DISEASES = {
@@ -270,16 +308,29 @@ class AdminBroadcastInput(BaseModel):
 
 
 def require_admin(x_admin_token: Optional[str] = Header(default=None, alias="X-Admin-Token")):
-    if not x_admin_token or x_admin_token not in admin_sessions:
+    if not x_admin_token:
         raise HTTPException(status_code=401, detail="Admin authentication required")
+    # accept in-memory session tokens (legacy) or stateless signed tokens
+    if x_admin_token in admin_sessions:
+        return
+    payload = _verify_admin_token(x_admin_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Admin authentication required")
+    # optionally verify phone matches configured admin
+    if normalize_phone(payload.get('phone')) != normalize_phone(ADMIN_PHONE):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
 
 
 @app.post('/admin/login')
 def admin_login(data: AdminLogin):
     if normalize_phone(data.phone) != normalize_phone(ADMIN_PHONE) or str(data.password) != ADMIN_PASSWORD:
         raise HTTPException(status_code=401, detail='Invalid admin phone or password')
-    token = str(uuid4())
-    admin_sessions.add(token)
+    token = _make_admin_token({'phone': normalize_phone(ADMIN_PHONE)})
+    # keep legacy in-memory session (optional)
+    try:
+        admin_sessions.add(token)
+    except Exception:
+        pass
     return {'token': token, 'admin_phone': ADMIN_PHONE}
 
 
@@ -339,7 +390,9 @@ def patient_signup(p: PatientSignup):
         'prescriptions': []
     }
     _save_json(USERS_FILE, users)
-    return {'user_id': uid}
+    # return sanitized user object along with id for frontend caching
+    user_public = {k: v for k, v in users[uid].items() if k != 'password_hash'}
+    return {'user_id': uid, 'user': user_public}
 
 
 @app.post('/patient/login')
@@ -350,7 +403,9 @@ def patient_login(l: PatientLogin):
         user_phone = normalize_phone(u.get('phone'))
         if (user_phone and user_phone == login_phone) or (str(uid) == str(l.phone)):
             if u.get('password_hash') == _hash_password(l.password):
-                return {'user_id': uid}
+                # return sanitized user object to the client to allow caching
+                user_public = {k: v for k, v in u.items() if k != 'password_hash'}
+                return {'user_id': uid, 'user': user_public}
     raise HTTPException(status_code=401, detail='Invalid phone or password')
 
 
