@@ -165,12 +165,14 @@ async function deleteJson(path) {
 function setTopStatus() {
   const status = el("status-pill");
   const logout = el("btn-logout");
+  const signin = el("btn-signin");
   if (!status || !logout) return;
 
   if (state.userId && state.user) {
     status.textContent = `Patient: ${state.user.first_name || "Signed in"}`;
     status.classList.remove("muted");
     logout.classList.remove("hidden");
+    if (signin) signin.classList.add("hidden");
     return;
   }
 
@@ -179,6 +181,7 @@ function setTopStatus() {
     status.textContent = `Vendor: ${displayName}`;
     status.classList.remove("muted");
     logout.classList.remove("hidden");
+    if (signin) signin.classList.add("hidden");
     return;
   }
 
@@ -187,12 +190,14 @@ function setTopStatus() {
     status.textContent = displayName;
     status.classList.remove("muted");
     logout.classList.remove("hidden");
+    if (signin) signin.classList.add("hidden");
     return;
   }
 
   status.textContent = "Not signed in";
   status.classList.add("muted");
   logout.classList.add("hidden");
+  if (signin) signin.classList.remove("hidden");
 }
 
 function switchView(viewId) {
@@ -628,7 +633,6 @@ function renderDoctorConsultRequests(items) {
     const card = document.createElement("article");
     card.className = "result-card";
     const reason = r.reason && String(r.reason).trim() ? r.reason : "No reason added.";
-    const videoLink = r.video_link ? `<a class="btn ghost" target="_blank" rel="noopener" href="${r.video_link}">Open Video Call</a>` : "";
     card.innerHTML = `
       <h4>${r.patient_name || "Patient"}</h4>
       <p><strong>Status:</strong> pending</p>
@@ -637,7 +641,6 @@ function renderDoctorConsultRequests(items) {
       <div class="inline-actions">
         <button class="btn primary req-accept" type="button">Accept</button>
         <button class="btn danger req-reject" type="button">Reject</button>
-        ${videoLink}
       </div>
     `;
     card.querySelector(".req-accept")?.addEventListener("click", async () => {
@@ -678,7 +681,7 @@ function showIncomingCallModal(req) {
   const accept = el("incoming-accept");
   const reject = el("incoming-reject");
   if (!modal || !text || !accept || !reject || !req) return;
-  text.textContent = `${req.patient_name || "Patient"} (ID: ${req.patient_id || "-"}) is calling.`;
+  text.textContent = `${req.patient_name || "Patient"} (ID: ${req.patient_id || "-"}) has requested a consultation.`;
   modal.classList.remove("hidden");
   state.incomingRequestId = String(req.request_id || "");
   accept.onclick = async () => {
@@ -686,11 +689,8 @@ function showIncomingCallModal(req) {
     try {
       await postJson(`/doctor/${state.doctorId}/consult/${req.request_id}`, { action: "accepted" });
       hideIncomingCallModal();
-      if (req.video_link) {
-        window.open(req.video_link, "_blank", "noopener");
-      }
       await loadDoctorDashboard(state.doctorId);
-      toast("Call accepted");
+      toast("Consult accepted");
     } catch (err) {
       toast(`Accept failed: ${err.message}`);
     }
@@ -748,19 +748,10 @@ async function loadDoctorPublicList() {
   const selectedId = String(select.value || "");
   const selectedDoc = state.doctorPublicList.find((d) => String(d.doctor_id) === selectedId) || null;
   const phoneNode = el("consult-doctor-phone");
-  const callBtn = el("consult-call-doctor");
   if (selectedDoc) {
     if (phoneNode) phoneNode.textContent = `Doctor phone: ${selectedDoc.phone || "-"}`;
-    if (callBtn && selectedDoc.phone) {
-      callBtn.href = `tel:${selectedDoc.phone}`;
-      callBtn.classList.remove("hidden");
-    }
   } else {
     if (phoneNode) phoneNode.textContent = "Doctor phone: -";
-    if (callBtn) {
-      callBtn.href = "#";
-      callBtn.classList.add("hidden");
-    }
   }
 }
 
@@ -1200,20 +1191,35 @@ function bindEvents() {
     event.preventDefault();
     const fd = new FormData(event.target);
     const payload = {
-      first_name: fd.get("first_name"),
-      last_name: fd.get("last_name"),
-      phone: fd.get("phone"),
-      email: fd.get("email"),
-      password: fd.get("password")
+      first_name: String(fd.get("first_name") || "").trim(),
+      last_name: String(fd.get("last_name") || "").trim(),
+      phone: String(fd.get("phone") || "").trim(),
+      email: String(fd.get("email") || "").trim(),
+      password: String(fd.get("password") || "").trim()
     };
 
     try {
-      await postJson("/patient/signup", payload);
-      localStorage.setItem("patient_phone", String(payload.phone || ""));
-      localStorage.setItem("patient_password", String(payload.password || ""));
-      safeText("patient-signup-msg", "Account created. Please login now.");
-      switchAuthTab("patient", "login");
-      toast("Patient account created");
+      const res = await postJson("/patient/signup", payload);
+      state.userId = res.user_id;
+      state.user = res.user || null;
+      state.vendorId = "";
+      state.vendor = null;
+      state.doctorId = "";
+      state.doctor = null;
+      localStorage.setItem("user_id", state.userId);
+      localStorage.removeItem("vendor_id");
+      localStorage.removeItem("vendor_token");
+      localStorage.removeItem("doctor_id");
+      localStorage.removeItem("doctor_token");
+      localStorage.setItem("patient_phone", payload.phone);
+      localStorage.setItem("patient_password", payload.password);
+      localStorage.setItem("user_type", "patient");
+      localStorage.setItem("last_login", new Date().toISOString());
+      if (res.user) profileCache.set(state.userId, res.user);
+
+      safeText("patient-signup-msg", "Account created and signed in.");
+      toast("Patient account created and logged in");
+      await loadPatientDashboard(state.userId);
     } catch (err) {
       safeText("patient-signup-msg", `Signup failed: ${err.message}`);
     }
@@ -1223,27 +1229,28 @@ function bindEvents() {
     event.preventDefault();
     const fd = new FormData(event.target);
     const payload = {
-      phone: String(fd.get("phone") || ""),
-      password: String(fd.get("password") || "")
+      phone: String(fd.get("phone") || "").trim(),
+      password: String(fd.get("password") || "").trim()
     };
 
     try {
       const res = await postJson("/patient/login", payload);
       state.userId = res.user_id;
-      state.userToken = res.token || "";
-
-      // Store session data persistently
+      state.user = res.user || null;
+      state.vendorId = "";
+      state.vendor = null;
+      state.doctorId = "";
+      state.doctor = null;
       localStorage.setItem("user_id", state.userId);
-      localStorage.setItem("user_token", state.userToken);
+      localStorage.removeItem("vendor_id");
+      localStorage.removeItem("vendor_token");
+      localStorage.removeItem("doctor_id");
+      localStorage.removeItem("doctor_token");
       localStorage.setItem("patient_phone", payload.phone);
       localStorage.setItem("patient_password", payload.password);
       localStorage.setItem("user_type", "patient");
       localStorage.setItem("last_login", new Date().toISOString());
-
-      // Cache user profile for fast access
-      if (res.user) {
-        profileCache.set(state.userId, res.user);
-      }
+      if (res.user) profileCache.set(state.userId, res.user);
 
       safeText("patient-login-msg", "Login successful.");
       await loadPatientDashboard(state.userId);
@@ -1283,24 +1290,28 @@ function bindEvents() {
     event.preventDefault();
     const fd = new FormData(event.target);
     const payload = {
-      phone: String(fd.get("phone") || ""),
-      password: String(fd.get("password") || "")
+      phone: String(fd.get("phone") || "").trim(),
+      password: String(fd.get("password") || "").trim()
     };
 
     try {
       const res = await postJson("/vendor/login", payload);
       state.vendorId = res.vendor_id;
       state.vendorToken = res.token || "";
-
-      // Store session data persistently
+      state.userId = "";
+      state.user = null;
+      state.doctorId = "";
+      state.doctor = null;
       localStorage.setItem("vendor_id", state.vendorId);
-      localStorage.setItem("vendor_token", state.vendorToken);
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_token");
+      localStorage.removeItem("doctor_id");
+      localStorage.removeItem("doctor_token");
       localStorage.setItem("vendor_phone", payload.phone);
       localStorage.setItem("vendor_password", payload.password);
       localStorage.setItem("user_type", "vendor");
       localStorage.setItem("last_login", new Date().toISOString());
 
-      // Cache vendor profile
       if (res.vendor) {
         profileCache.set(state.vendorId, res.vendor);
       }
@@ -1349,12 +1360,20 @@ function bindEvents() {
     const fd = new FormData(event.target);
     const payload = {
       phone: String(fd.get("phone") || "").trim(),
-      password: String(fd.get("password") || "")
+      password: String(fd.get("password") || "").trim()
     };
     try {
       const res = await postJson("/doctor/login", payload);
       state.doctorId = res.doctor_id;
+      state.userId = "";
+      state.user = null;
+      state.vendorId = "";
+      state.vendor = null;
       localStorage.setItem("doctor_id", state.doctorId);
+      localStorage.removeItem("user_id");
+      localStorage.removeItem("user_token");
+      localStorage.removeItem("vendor_id");
+      localStorage.removeItem("vendor_token");
       localStorage.setItem("doctor_phone", payload.phone);
       localStorage.setItem("doctor_password", payload.password);
       safeText("doctor-login-msg", "Doctor login successful.");
@@ -1481,19 +1500,13 @@ function bindEvents() {
     }
     const reason = String(el("consult-reason")?.value || "").trim();
     try {
-      const out = await postJson("/consult/request", {
+      await postJson("/consult/request", {
         user_id: state.userId,
         doctor_id: doctorId,
         reason
       });
-      const msg = out.video_link
-        ? `Request sent. Join video call: ${out.video_link}`
-        : "Request sent to doctor.";
-      safeText("consult-request-msg", msg);
+      safeText("consult-request-msg", "Consult request sent. The doctor will review it shortly.");
       toast("Consult request sent");
-      if (out.video_link) {
-        window.open(out.video_link, "_blank", "noopener");
-      }
     } catch (err) {
       safeText("consult-request-msg", `Request failed: ${err.message}`);
     }
@@ -1503,20 +1516,11 @@ function bindEvents() {
     const selectedId = String(el("consult-doctor-select")?.value || "");
     const doc = state.doctorPublicList.find((d) => String(d.doctor_id) === selectedId) || null;
     const phoneNode = el("consult-doctor-phone");
-    const callBtn = el("consult-call-doctor");
     if (!doc) {
       if (phoneNode) phoneNode.textContent = "Doctor phone: -";
-      if (callBtn) {
-        callBtn.href = "#";
-        callBtn.classList.add("hidden");
-      }
       return;
     }
     if (phoneNode) phoneNode.textContent = `Doctor phone: ${doc.phone || "-"}`;
-    if (callBtn && doc.phone) {
-      callBtn.href = `tel:${doc.phone}`;
-      callBtn.classList.remove("hidden");
-    }
   });
 
   el("btn-upload")?.addEventListener("click", async () => {
@@ -1687,6 +1691,30 @@ function bindEvents() {
     if (patientId && el("doctor-presc-patient-id")) {
       el("doctor-presc-patient-id").value = patientId;
     }
+  });
+
+  el("doctor-presc-photos")?.addEventListener("change", () => {
+    const preview = el("doctor-presc-photo-preview");
+    if (!preview) return;
+    preview.innerHTML = "";
+    const files = el("doctor-presc-photos")?.files;
+    if (!files || !files.length) return;
+
+    Array.from(files).forEach((file) => {
+      const thumb = document.createElement("div");
+      thumb.className = "photo-preview-thumb";
+      const fileName = document.createElement("span");
+      fileName.textContent = file.name;
+      if (file.type.startsWith("image/")) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.alt = file.name;
+        img.onload = () => URL.revokeObjectURL(img.src);
+        thumb.appendChild(img);
+      }
+      thumb.appendChild(fileName);
+      preview.appendChild(thumb);
+    });
   });
 }
 
