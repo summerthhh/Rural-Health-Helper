@@ -1264,6 +1264,9 @@
       }
     });
 
+    // Always start with login section first
+    showAdminArea(false);
+
     // Check if already logged in
     if (state.token) {
       showAdminArea(true);
