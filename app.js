@@ -1,3 +1,11 @@
+// Theme Support
+(function() {
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  if (savedTheme === 'dark') {
+    document.documentElement.classList.add('dark-mode');
+  }
+})();
+
 const apiBase = "";
 
 const state = {
@@ -1590,4 +1598,19 @@ window.addEventListener("load", async () => {
   }
 
   switchView("view-landing");
+
+  // Theme Toggle Handler
+  el("btn-theme-toggle")?.addEventListener("click", () => {
+    const html = document.documentElement;
+    html.classList.toggle("dark-mode");
+    const isDark = html.classList.contains("dark-mode");
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+    el("btn-theme-toggle").textContent = isDark ? "🌙" : "☀️";
+  });
+
+  // Set initial theme icon
+  const savedTheme = localStorage.getItem("theme") || "light";
+  if (savedTheme === "dark") {
+    el("btn-theme-toggle").textContent = "🌙";
+  }
 });

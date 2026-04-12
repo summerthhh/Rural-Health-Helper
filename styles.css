@@ -15,6 +15,25 @@
   --shadow: 0 20px 60px rgba(15, 23, 46, 0.12);
   --shadow-sm: 0 8px 24px rgba(15, 23, 46, 0.08);
   --radius: 16px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.dark-mode {
+  --bg: #0f172e;
+  --card: #1f2937;
+  --card-soft: rgba(31, 41, 55, 0.85);
+  --text: #f9fafb;
+  --muted: #d1d5db;
+  --primary: #10b981;
+  --primary-2: #059669;
+  --primary-light: #d1fae5;
+  --secondary: #f97316;
+  --secondary-light: #fed7aa;
+  --danger: #dc2626;
+  --success: #10b981;
+  --line: #374151;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 * {
@@ -32,6 +51,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: var(--transition);
 }
 
 h1, h2, h3, h4 {

@@ -1,250 +1,663 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Admin Console</title>
+  <title>Admin Console - Rural Health Helper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
+    * { box-sizing: border-box; }
+
     :root {
-      --bg: #eef4ea;
-      --card: #ffffff;
-      --text: #1f2c1d;
-      --muted: #5f6c60;
-      --line: #d8e1d5;
-      --primary: #0f766e;
-      --danger: #b91c1c;
-      --warn: #d97706;
-      --ok: #166534;
-      --shadow: 0 14px 32px rgba(19, 32, 22, .08);
-      --radius: 16px;
+      /* Light mode colors */
+      --bg-primary: #f8fafb;
+      --bg-secondary: #f3f4f6;
+      --card-bg: #ffffff;
+      --text-primary: #0f172e;
+      --text-secondary: #6b7280;
+      --border-color: #e5e7eb;
+      --primary: #059669;
+      --primary-dark: #047857;
+      --secondary: #f97316;
+      --danger: #dc2626;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
+      --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.15);
+      --radius: 12px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    * { box-sizing: border-box; }
+    html.dark-mode {
+      --bg-primary: #0f172e;
+      --bg-secondary: #1a202c;
+      --card-bg: #1f2937;
+      --text-primary: #f9fafb;
+      --text-secondary: #d1d5db;
+      --border-color: #374151;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
 
     body {
       margin: 0;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      color: var(--text);
+      font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: var(--transition);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       background:
-        radial-gradient(circle at 90% 8%, rgba(15,118,110,.15), transparent 34%),
-        radial-gradient(circle at 2% 75%, rgba(217,119,6,.12), transparent 30%),
-        var(--bg);
-      min-height: 100vh;
-      padding: 20px;
+        radial-gradient(circle at 100% 0%, rgba(5, 150, 105, 0.1), transparent 50%),
+        radial-gradient(circle at 0% 100%, rgba(249, 115, 22, 0.08), transparent 50%);
+      pointer-events: none;
+      z-index: -1;
     }
 
-    .shell { max-width: 1200px; margin: 0 auto; }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 16px;
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
     }
 
-    .top {
+    /* Header */
+    .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
+      gap: 20px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
     }
 
-    h1, h2, h3, h4 { margin: 0; }
+    .header h1 {
+      margin: 0;
+      font-family: "Outfit", sans-serif;
+      font-size: 2rem;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 800;
+    }
 
-    .muted { color: var(--muted); }
+    .header-actions {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
 
-    .grid {
+    /* Theme Toggle */
+    .theme-toggle {
+      position: relative;
+      width: 60px;
+      height: 32px;
+      background: var(--border-color);
+      border-radius: 999px;
+      border: 2px solid var(--border-color);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--primary);
+    }
+
+    .theme-toggle.active {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .toggle-circle {
+      width: 24px;
+      height: 24px;
+      background: var(--card-bg);
+      border-radius: 50%;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .theme-toggle.active .toggle-circle {
+      margin-left: auto;
+    }
+
+    /* Card */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition);
+      margin-bottom: 20px;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary);
+    }
+
+    .card h2, .card h3 {
+      margin: 0 0 16px 0;
+      font-family: "Outfit", sans-serif;
+      font-weight: 700;
+    }
+
+    /* Form */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      background: var(--card-bg);
+      color: var(--text-primary);
+      transition: var(--transition);
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 11px 16px;
+      border: 0;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--secondary), #ea580c);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--danger), #991b1b);
+      color: #fff;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, var(--warning), #d97706);
+      color: #fff;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1.5px solid var(--border-color);
+      color: var(--text-primary);
+    }
+
+    .btn-ghost:hover {
+      background: var(--bg-secondary);
+      border-color: var(--primary);
+    }
+
+    .btn-small {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    /* Pill Badge */
+    .pill {
+      display: inline-block;
+      padding: 6px 12px;
+      background: rgba(5, 150, 105, 0.15);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: 1px solid rgba(5, 150, 105, 0.3);
+    }
+
+    .pill.danger {
+      background: rgba(220, 38, 38, 0.15);
+      color: var(--danger);
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    .pill.warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .pill.success {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    /* Stats Grid */
+    .stats-grid {
       display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
     }
 
-    .main { display: grid; gap: 14px; }
+    .stat-card {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+    }
 
+    .stat-card h4 {
+      margin: 0 0 8px 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+      font-weight: 600;
+    }
+
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 800;
+      font-family: "Outfit", sans-serif;
+      margin: 0;
+    }
+
+    /* Login Section */
+    .login-container {
+      max-width: 400px;
+      margin: 60px auto;
+    }
+
+    .login-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .login-card h1 {
+      text-align: center;
+      margin: 0 0 8px 0;
+      font-family: "Outfit", sans-serif;
+    }
+
+    .login-card .subtitle {
+      text-align: center;
+      color: var(--text-secondary);
+      margin: 0 0 24px 0;
+    }
+
+    .login-card .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* Messages */
+    .message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.95rem;
+      display: none;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+    }
+
+    .message.error {
+      background: rgba(220, 38, 38, 0.15);
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      color: var(--danger);
+    }
+
+    /* List Item */
+    .list-item {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      transition: var(--transition);
+    }
+
+    .list-item:hover {
+      border-color: var(--primary);
+      background: var(--card-bg);
+    }
+
+    .list-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .list-item-title {
+      font-weight: 700;
+      margin: 0;
+      color: var(--text-primary);
+    }
+
+    .list-item-meta {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin: 4px 0;
+    }
+
+    .list-item-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    /* Toolbar */
     .toolbar {
       display: flex;
+      gap: 12px;
       flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
     }
 
-    .pill {
-      font-size: 12px;
-      font-weight: 700;
-      border-radius: 999px;
-      padding: 6px 10px;
-      background: #eaf4ef;
-      color: var(--ok);
-      border: 1px solid #cfe3d5;
+    /* Admin Area */
+    .admin-area {
+      display: none;
     }
 
-    .btn {
-      border: 0;
-      border-radius: 10px;
-      padding: 9px 12px;
-      font-weight: 700;
-      cursor: pointer;
-      color: #fff;
-      background: var(--primary);
+    .admin-area.show {
+      display: block;
     }
 
-    .btn.alt { background: #2e3f32; }
-    .btn.warn { background: var(--warn); }
-    .btn.danger { background: var(--danger); }
-    .btn.light { color: var(--text); background: #e9efe8; }
-
-    .hidden { display: none !important; }
-
-    label { display: grid; gap: 6px; margin: 10px 0; font-weight: 600; }
-
-    input {
-      width: 100%;
-      border: 1px solid #cfd8cd;
-      border-radius: 10px;
-      padding: 9px 10px;
-      font: inherit;
+    /* Hidden */
+    .hidden {
+      display: none !important;
     }
 
-    select {
-      width: 100%;
-      border: 1px solid #cfd8cd;
-      border-radius: 10px;
-      padding: 9px 10px;
-      font: inherit;
-      background: #fff;
-    }
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
 
-    .list { display: grid; gap: 10px; }
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
 
-    .item {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: #fcfefd;
-      padding: 12px;
-      display: grid;
-      gap: 8px;
-    }
+      .header h1 {
+        font-size: 1.5rem;
+      }
 
-    .row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
 
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      .card {
+        padding: 16px;
+      }
 
-    .counts { display: flex; gap: 8px; flex-wrap: wrap; }
-
-    @media (max-width: 980px) {
-      .grid { grid-template-columns: 1fr; }
+      .login-card {
+        padding: 24px;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <div class="top card">
+  <div class="container">
+    <div class="header">
       <div>
-        <h1>Super Admin Console</h1>
-        <p class="muted">Manage patients, vendors, doctors and broadcasts</p>
+        <h1>🏥 Admin Console</h1>
+        <p style="color: var(--text-secondary); margin: 4px 0 0 0;">Manage Rural Health Helper Platform</p>
       </div>
-      <div class="counts">
-        <span class="pill" id="count-patients">Patients: 0</span>
-        <span class="pill" id="count-vendors">Vendors: 0</span>
-        <span class="pill" id="count-doctors">Doctors: 0</span>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" title="Toggle Dark Mode">
+          <span class="toggle-circle">☀️</span>
+        </button>
       </div>
     </div>
 
-    <div class="grid">
-      <section class="card">
-        <h3>Admin Login</h3>
-        <p class="muted">Use the super admin credentials</p>
-        <form id="login-form">
-          <label>Phone
-            <input name="phone" required autocomplete="username">
-          </label>
-          <label>Password
-            <input name="password" type="password" required autocomplete="current-password">
-          </label>
-          <div class="actions">
-            <button class="btn" type="submit">Sign In</button>
-            <button class="btn light" type="button" id="btn-logout">Logout</button>
-          </div>
+    <!-- Login Section -->
+    <div class="login-container" id="login-section">
+      <div class="login-card">
+        <h1>Admin Access</h1>
+        <p class="subtitle">Enter your credentials to continue</p>
+
+        <div class="message" id="loginMessage"></div>
+
+        <form id="loginForm" class="form-group">
+          <label>Phone Number</label>
+          <input
+            type="tel"
+            name="phone"
+            placeholder="e.g. 1234567890"
+            required
+            autocomplete="username"
+          >
+
+          <label style="margin-top: 16px;">Password</label>
+          <input
+            type="password"
+            name="password"
+            placeholder="Enter your password"
+            required
+            autocomplete="current-password"
+          >
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 24px; justify-content: center;">
+            Sign In
+          </button>
         </form>
-        <p id="login-result" class="muted"></p>
-      </section>
 
-      <section class="main hidden" id="admin-area">
-        <div class="card">
-          <div class="toolbar">
-            <button class="btn alt" id="btn-refresh">Refresh</button>
-            <button class="btn warn" id="btn-merge">Merge Duplicates</button>
-            <button class="btn danger" id="btn-clear-patients">Clear All Patients</button>
-            <button class="btn danger" id="btn-clear-vendors">Clear All Vendors</button>
-            <button class="btn danger" id="btn-clear-doctors">Clear All Doctors</button>
-          </div>
+        <div style="text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 0.9rem;">
+          <p>Demo Credentials:</p>
+          <p style="margin: 4px 0;">Phone: <strong>1234567890</strong></p>
+          <p style="margin: 4px 0;">Password: <strong>0987654321</strong></p>
         </div>
+      </div>
+    </div>
 
-        <div class="card">
-          <div class="row">
-            <h3>Vendors</h3>
-          </div>
-          <div class="list" id="vendors-list"></div>
+    <!-- Admin Area -->
+    <div class="admin-area" id="adminArea">
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h4>Total Patients</h4>
+          <p class="value" id="countPatients">0</p>
         </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+          <h4>Total Vendors</h4>
+          <p class="value" id="countVendors">0</p>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+          <h4>Total Doctors</h4>
+          <p class="value" id="countDoctors">0</p>
+        </div>
+      </div>
 
-        <div class="card">
-          <div class="row">
-            <h3>Patients</h3>
-          </div>
-          <div class="list" id="patients-list"></div>
+      <!-- Actions Toolbar -->
+      <div class="card">
+        <div class="toolbar">
+          <button class="btn btn-primary" id="btnRefresh">🔄 Refresh</button>
+          <button class="btn btn-warning btn-small" id="btnMerge">Merge Duplicates</button>
+          <button class="btn btn-danger btn-small" id="btnClearPatients">Clear Patients</button>
+          <button class="btn btn-danger btn-small" id="btnClearVendors">Clear Vendors</button>
+          <button class="btn btn-danger btn-small" id="btnClearDoctors">Clear Doctors</button>
+          <button class="btn btn-ghost" id="btnLogout" style="margin-left: auto;">Logout</button>
         </div>
+      </div>
 
-        <div class="card">
-          <div class="row">
-            <h3>Doctors</h3>
-          </div>
-          <div class="list" id="doctors-list"></div>
-        </div>
+      <!-- Patients -->
+      <div class="card">
+        <h3>👥 Patients</h3>
+        <div id="patientsList"></div>
+      </div>
 
-        <div class="card">
-          <div class="row">
-            <h3>Broadcast Banner</h3>
+      <!-- Vendors -->
+      <div class="card">
+        <h3>🏪 Vendors & Medical Stores</h3>
+        <div id="vendorsList"></div>
+      </div>
+
+      <!-- Doctors -->
+      <div class="card">
+        <h3>👨‍⚕️ Doctors</h3>
+        <div id="doctorsList"></div>
+      </div>
+
+      <!-- Broadcast -->
+      <div class="card">
+        <h3>📢 Send Broadcast</h3>
+        <form id="broadcastForm">
+          <div class="form-group">
+            <label>Target Audience</label>
+            <select name="target" required>
+              <option value="all">All Users</option>
+              <option value="patients">All Patients</option>
+              <option value="vendors">All Vendors</option>
+              <option value="doctors">All Doctors</option>
+            </select>
           </div>
-          <form id="broadcast-form">
-            <label>Target Audience
-              <select name="target" required>
-                <option value="all">All</option>
-                <option value="patients">All Patients</option>
-                <option value="vendors">All Vendors</option>
-                <option value="doctors">All Doctors</option>
-              </select>
-            </label>
-            <label>Message
-              <input name="message" required placeholder="Type broadcast message">
-            </label>
-            <label>Duration (seconds)
-              <input name="duration_seconds" type="number" min="5" max="3600" value="30" required>
-            </label>
-            <div class="actions">
-              <button class="btn" type="submit">Send Broadcast</button>
-            </div>
-          </form>
-          <p id="broadcast-result" class="muted"></p>
-        </div>
-      </section>
+
+          <div class="form-group">
+            <label>Message</label>
+            <input
+              type="text"
+              name="message"
+              placeholder="Enter broadcast message"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label>Duration (seconds)</label>
+            <input
+              type="number"
+              name="duration_seconds"
+              min="5"
+              max="3600"
+              value="30"
+              required
+            >
+          </div>
+
+          <button type="submit" class="btn btn-secondary">Send Broadcast</button>
+        </form>
+        <div class="message" id="broadcastMessage"></div>
+      </div>
     </div>
   </div>
 
   <script>
+    // Theme Toggle
+    const themeToggle = document.getElementById('theme-toggle');
+    const htmlElement = document.documentElement;
+
+    // Load saved theme preference
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    if (savedTheme === 'dark') {
+      htmlElement.classList.add('dark-mode');
+      themeToggle.classList.add('active');
+      themeToggle.querySelector('.toggle-circle').textContent = '🌙';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      htmlElement.classList.toggle('dark-mode');
+      themeToggle.classList.toggle('active');
+      const isDark = htmlElement.classList.contains('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      themeToggle.querySelector('.toggle-circle').textContent = isDark ? '🌙' : '☀️';
+    });
+
+    // Admin Functions
     const el = (id) => document.getElementById(id);
     const apiBase = '';
-
     const state = {
       token: localStorage.getItem('admin_token') || ''
     };
+
+    function showMessage(elementId, message, type = 'success') {
+      const msgEl = el(elementId);
+      msgEl.textContent = message;
+      msgEl.className = `message show ${type}`;
+      setTimeout(() => msgEl.classList.remove('show'), 5000);
+    }
 
     function setToken(t) {
       state.token = t || '';
@@ -252,203 +665,254 @@
       else localStorage.removeItem('admin_token');
     }
 
-    function setMsg(msg) {
-      el('login-result').textContent = msg;
-    }
-
-    function authHeaders(extra = {}) {
-      const h = { ...extra };
-      if (state.token) h['X-Admin-Token'] = state.token;
-      return h;
-    }
-
     async function request(path, opts = {}) {
-      const response = await fetch(apiBase + path, {
-        ...opts,
-        headers: authHeaders(opts.headers || {})
-      });
+      const headers = opts.headers || {};
+      if (state.token) headers['X-Admin-Token'] = state.token;
+
+      const response = await fetch(apiBase + path, { ...opts, headers });
+
       if (response.status === 401) {
         setToken('');
-        toggleAdminArea(false);
-        throw new Error('Admin auth required. Please login again.');
+        showAdminArea(false);
+        showMessage('loginMessage', 'Session expired. Please login again.', 'error');
+        throw new Error('Admin auth required');
       }
+
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(text);
+        throw new Error(text || 'Request failed');
       }
+
       const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) return response.json();
-      return response.text();
+      return contentType.includes('application/json') ? response.json() : response.text();
     }
 
-    function toggleAdminArea(show) {
-      el('admin-area').classList.toggle('hidden', !show);
-    }
-
-    function renderCounts(patients, vendors, doctors) {
-      el('count-patients').textContent = `Patients: ${patients.length}`;
-      el('count-vendors').textContent = `Vendors: ${vendors.length}`;
-      el('count-doctors').textContent = `Doctors: ${doctors.length}`;
-    }
-
-    async function loadVendors() {
-      const data = await request('/vendors');
-      const list = el('vendors-list');
-      list.innerHTML = '';
-
-      if (!data.vendors || data.vendors.length === 0) {
-        list.innerHTML = '<div class="muted">No vendors found.</div>';
-        return [];
-      }
-
-      data.vendors.forEach((v) => {
-        const card = document.createElement('article');
-        card.className = 'item';
-        card.innerHTML = `
-          <div class="row">
-            <strong>${v.shop_name || 'Shop'}</strong>
-            <span class="pill">${v.status || 'unknown'}</span>
-          </div>
-          <div class="muted">${v.first_name || ''} ${v.last_name || ''} | ${v.phone || '-'}</div>
-          <div class="actions">
-            <button class="btn" data-action="approve">Approve</button>
-            <button class="btn warn" data-action="block">Block</button>
-            <button class="btn danger" data-action="delete">Delete</button>
-          </div>
-        `;
-
-        card.querySelector('[data-action="approve"]').onclick = async () => {
-          await request(`/admin/vendor/${v.id}/approve`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reason: 'Approved from admin console' })
-          });
-          await loadAll();
-        };
-
-        card.querySelector('[data-action="block"]').onclick = async () => {
-          await request(`/admin/vendor/${v.id}/block`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reason: 'Blocked from admin console' })
-          });
-          await loadAll();
-        };
-
-        card.querySelector('[data-action="delete"]').onclick = async () => {
-          if (!confirm('Delete this vendor permanently?')) return;
-          await request(`/admin/vendor/${v.id}`, { method: 'DELETE' });
-          await loadAll();
-        };
-
-        list.appendChild(card);
-      });
-
-      return data.vendors;
+    function showAdminArea(show) {
+      el('loginSection').style.display = show ? 'none' : 'block';
+      el('adminArea').classList.toggle('show', show);
     }
 
     async function loadPatients() {
-      const data = await request('/admin/patients');
-      const list = el('patients-list');
-      list.innerHTML = '';
+      try {
+        const data = await request('/admin/patients');
+        const list = el('patientsList');
+        list.innerHTML = '';
 
-      if (!data.patients || data.patients.length === 0) {
-        list.innerHTML = '<div class="muted">No patients found.</div>';
+        if (!data.patients || data.patients.length === 0) {
+          list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👤</div><p>No patients found</p></div>';
+          return [];
+        }
+
+        data.patients.forEach((u) => {
+          const html = document.createElement('div');
+          html.className = 'list-item';
+          html.innerHTML = `
+            <div class="list-item-header">
+              <p class="list-item-title">${u.first_name || ''} ${u.last_name || ''}</p>
+              <span class="pill">${u.phone || '-'}</span>
+            </div>
+            <div class="list-item-meta">📧 ${u.email || 'No email'}</div>
+            <div class="list-item-meta">ID: ${u.id}</div>
+            <div class="list-item-actions">
+              <button class="btn btn-danger btn-small" data-action="delete">Delete</button>
+            </div>
+          `;
+
+          html.querySelector('[data-action="delete"]').onclick = async () => {
+            if (!confirm('Delete this patient permanently?')) return;
+            try {
+              await request(`/admin/patient/${u.id}`, { method: 'DELETE' });
+              await loadPatients();
+              showMessage('loginMessage', 'Patient deleted', 'success');
+            } catch (err) {
+              showMessage('loginMessage', 'Delete failed: ' + err.message, 'error');
+            }
+          };
+
+          list.appendChild(html);
+        });
+
+        return data.patients;
+      } catch (err) {
+        el('patientsList').innerHTML = `<div class="empty-state"><p style="color: var(--danger);">Error loading patients: ${err.message}</p></div>`;
         return [];
       }
+    }
 
-      data.patients.forEach((u) => {
-        const card = document.createElement('article');
-        card.className = 'item';
-        card.innerHTML = `
-          <div class="row">
-            <strong>${u.first_name || ''} ${u.last_name || ''}</strong>
-            <span class="pill">${u.phone || '-'}</span>
-          </div>
-          <div class="muted">${u.email || 'No email'}</div>
-          <div class="actions">
-            <button class="btn danger" data-action="delete">Delete</button>
-          </div>
-        `;
+    async function loadVendors() {
+      try {
+        const data = await request('/vendors');
+        const list = el('vendorsList');
+        list.innerHTML = '';
 
-        card.querySelector('[data-action="delete"]').onclick = async () => {
-          if (!confirm('Delete this patient permanently?')) return;
-          await request(`/admin/patient/${u.id}`, { method: 'DELETE' });
-          await loadAll();
-        };
+        if (!data.vendors || data.vendors.length === 0) {
+          list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏪</div><p>No vendors found</p></div>';
+          return [];
+        }
 
-        list.appendChild(card);
-      });
+        data.vendors.forEach((v) => {
+          const html = document.createElement('div');
+          html.className = 'list-item';
+          const statusPill = `<span class="pill ${v.status === 'blocked' ? 'danger' : v.status === 'approved' ? 'success' : 'warning'}">${v.status || 'unknown'}</span>`;
+          html.innerHTML = `
+            <div class="list-item-header">
+              <p class="list-item-title">${v.shop_name || 'Shop'}</p>
+              ${statusPill}
+            </div>
+            <div class="list-item-meta">👤 ${v.first_name || ''} ${v.last_name || ''}</div>
+            <div class="list-item-meta">📞 ${v.phone || '-'}</div>
+            <div class="list-item-meta">📍 ${v.shop_address || 'No address'}</div>
+            <div class="list-item-actions">
+              <button class="btn btn-primary btn-small" data-action="approve">Approve</button>
+              <button class="btn btn-warning btn-small" data-action="block">Block</button>
+              <button class="btn btn-danger btn-small" data-action="delete">Delete</button>
+            </div>
+          `;
 
-      return data.patients;
+          html.querySelector('[data-action="approve"]').onclick = async () => {
+            try {
+              await request(`/admin/vendor/${v.id}/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: 'Approved from admin console' })
+              });
+              await loadVendors();
+              showMessage('loginMessage', 'Vendor approved', 'success');
+            } catch (err) {
+              showMessage('loginMessage', 'Error: ' + err.message, 'error');
+            }
+          };
+
+          html.querySelector('[data-action="block"]').onclick = async () => {
+            try {
+              await request(`/admin/vendor/${v.id}/block`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: 'Blocked from admin console' })
+              });
+              await loadVendors();
+              showMessage('loginMessage', 'Vendor blocked', 'success');
+            } catch (err) {
+              showMessage('loginMessage', 'Error: ' + err.message, 'error');
+            }
+          };
+
+          html.querySelector('[data-action="delete"]').onclick = async () => {
+            if (!confirm('Delete this vendor permanently?')) return;
+            try {
+              await request(`/admin/vendor/${v.id}`, { method: 'DELETE' });
+              await loadVendors();
+              showMessage('loginMessage', 'Vendor deleted', 'success');
+            } catch (err) {
+              showMessage('loginMessage', 'Delete failed: ' + err.message, 'error');
+            }
+          };
+
+          list.appendChild(html);
+        });
+
+        return data.vendors;
+      } catch (err) {
+        el('vendorsList').innerHTML = `<div class="empty-state"><p style="color: var(--danger);">Error loading vendors: ${err.message}</p></div>`;
+        return [];
+      }
     }
 
     async function loadDoctors() {
-      const data = await request('/admin/doctors');
-      const list = el('doctors-list');
-      list.innerHTML = '';
+      try {
+        const data = await request('/admin/doctors');
+        const list = el('doctorsList');
+        list.innerHTML = '';
 
-      if (!data.doctors || data.doctors.length === 0) {
-        list.innerHTML = '<div class="muted">No doctors found.</div>';
+        if (!data.doctors || data.doctors.length === 0) {
+          list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👨‍⚕️</div><p>No doctors found</p></div>';
+          return [];
+        }
+
+        data.doctors.forEach((d) => {
+          const html = document.createElement('div');
+          html.className = 'list-item';
+          const statusPill = `<span class="pill ${d.status === 'blocked' ? 'danger' : d.status === 'approved' ? 'success' : 'warning'}">${d.status || 'unknown'}</span>`;
+          html.innerHTML = `
+            <div class="list-item-header">
+              <p class="list-item-title">Dr. ${d.first_name || ''} ${d.last_name || ''}</p>
+              ${statusPill}
+            </div>
+            <div class="list-item-meta">📞 ${d.phone || '-'}</div>
+            <div class="list-item-meta">🔖 Specialization: ${d.specialization || 'General Physician'}</div>
+            <div class="list-item-meta">📜 License: ${d.license_no || '-'}</div>
+            <div class="list-item-actions">
+              <button class="btn btn-primary btn-small" data-action="approve">Approve</button>
+              <button class="btn btn-warning btn-small" data-action="block">Block</button>
+              <button class="btn btn-danger btn-small" data-action="delete">Delete</button>
+            </div>
+          `;
+
+          html.querySelector('[data-action="approve"]').onclick = async () => {
+            try {
+              await request(`/admin/doctor/${d.id}/approve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: 'Approved from admin console' })
+              });
+              await loadDoctors();
+              showMessage('loginMessage', 'Doctor approved', 'success');
+            } catch (err) {
+              showMessage('loginMessage', 'Error: ' + err.message, 'error');
+            }
+          };
+
+          html.querySelector('[data-action="block"]').onclick = async () => {
+            try {
+              await request(`/admin/doctor/${d.id}/block`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: 'Blocked from admin console' })
+              });
+              await loadDoctors();
+              showMessage('loginMessage', 'Doctor blocked', 'success');
+            } catch (err) {
+              showMessage('loginMessage', 'Error: ' + err.message, 'error');
+            }
+          };
+
+          html.querySelector('[data-action="delete"]').onclick = async () => {
+            if (!confirm('Delete this doctor permanently?')) return;
+            try {
+              await request(`/admin/doctor/${d.id}`, { method: 'DELETE' });
+              await loadDoctors();
+              showMessage('loginMessage', 'Doctor deleted', 'success');
+            } catch (err) {
+              showMessage('loginMessage', 'Delete failed: ' + err.message, 'error');
+            }
+          };
+
+          list.appendChild(html);
+        });
+
+        return data.doctors;
+      } catch (err) {
+        el('doctorsList').innerHTML = `<div class="empty-state"><p style="color: var(--danger);">Error loading doctors: ${err.message}</p></div>`;
         return [];
       }
-
-      data.doctors.forEach((d) => {
-        const card = document.createElement('article');
-        card.className = 'item';
-        card.innerHTML = `
-          <div class="row">
-            <strong>Dr. ${d.first_name || ''} ${d.last_name || ''}</strong>
-            <span class="pill">${d.status || 'unknown'}</span>
-          </div>
-          <div class="muted">${d.phone || '-'} | ${d.specialization || 'General Physician'}</div>
-          <div class="muted">License: ${d.license_no || '-'}</div>
-          <div class="actions">
-            <button class="btn" data-action="approve">Approve</button>
-            <button class="btn warn" data-action="block">Block</button>
-            <button class="btn danger" data-action="delete">Delete</button>
-          </div>
-        `;
-
-        card.querySelector('[data-action="approve"]').onclick = async () => {
-          await request(`/admin/doctor/${d.id}/approve`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reason: 'Approved from admin console' })
-          });
-          await loadAll();
-        };
-
-        card.querySelector('[data-action="block"]').onclick = async () => {
-          await request(`/admin/doctor/${d.id}/block`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ reason: 'Blocked from admin console' })
-          });
-          await loadAll();
-        };
-
-        card.querySelector('[data-action="delete"]').onclick = async () => {
-          if (!confirm('Delete this doctor permanently?')) return;
-          await request(`/admin/doctor/${d.id}`, { method: 'DELETE' });
-          await loadAll();
-        };
-
-        list.appendChild(card);
-      });
-
-      return data.doctors;
     }
 
     async function loadAll() {
-      const [vendors, patients, doctors] = await Promise.all([loadVendors(), loadPatients(), loadDoctors()]);
-      renderCounts(patients, vendors, doctors);
+      try {
+        const [patients, vendors, doctors] = await Promise.all([loadPatients(), loadVendors(), loadDoctors()]);
+        el('countPatients').textContent = patients.length;
+        el('countVendors').textContent = vendors.length;
+        el('countDoctors').textContent = doctors.length;
+      } catch (err) {
+        showMessage('loginMessage', 'Failed to load data: ' + err.message, 'error');
+      }
     }
 
-    el('login-form').addEventListener('submit', async (e) => {
+    // Event Listeners
+    el('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
       try {
+        const fd = new FormData(e.target);
         const response = await fetch('/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -458,136 +922,99 @@
           })
         });
 
-        const text = await response.text();
-        let out = {};
-        try { out = JSON.parse(text); } catch { out = { detail: text || 'Login failed' }; }
+        const data = await response.json();
         if (!response.ok) {
-          setMsg(out.detail || 'Login failed');
+          showMessage('loginMessage', data.detail || 'Login failed', 'error');
           return;
         }
 
-        setToken(out.token);
-        setMsg('Login successful');
-        toggleAdminArea(true);
+        setToken(data.token);
+        showMessage('loginMessage', 'Login successful!', 'success');
+        showAdminArea(true);
         await loadAll();
       } catch (err) {
-        setMsg('Login failed: ' + err.message);
+        showMessage('loginMessage', 'Login error: ' + err.message, 'error');
       }
     });
 
-    el('btn-logout').addEventListener('click', () => {
+    el('btnLogout').addEventListener('click', () => {
       setToken('');
-      toggleAdminArea(false);
-      setMsg('Logged out');
-      renderCounts([], [], []);
-      el('vendors-list').innerHTML = '';
-      el('patients-list').innerHTML = '';
-      el('doctors-list').innerHTML = '';
+      showAdminArea(false);
+      el('loginForm').reset();
+      showMessage('loginMessage', 'Logged out', 'success');
     });
 
-    el('btn-refresh').addEventListener('click', async () => {
-      try {
-        await loadAll();
-      } catch (err) {
-        alert('Refresh failed: ' + err.message);
-      }
-    });
+    el('btnRefresh').addEventListener('click', loadAll);
 
-    el('btn-merge').addEventListener('click', async () => {
+    el('btnMerge').addEventListener('click', async () => {
       if (!confirm('Merge duplicate patients by phone?')) return;
       try {
-        const out = await request('/admin/merge_duplicates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
-        alert('Merged: ' + (out.merged || 0));
+        await request('/admin/merge_duplicates', { method: 'POST' });
         await loadAll();
+        showMessage('loginMessage', 'Duplicates merged', 'success');
       } catch (err) {
-        alert('Merge failed: ' + err.message);
+        showMessage('loginMessage', 'Error: ' + err.message, 'error');
       }
     });
 
-    el('btn-clear-patients').addEventListener('click', async () => {
-      if (!confirm('Clear ALL patient data? This cannot be undone.')) return;
+    el('btnClearPatients').addEventListener('click', async () => {
+      if (!confirm('Clear all patients? This cannot be undone.')) return;
       try {
-        await request('/admin/patients/clear', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
-        alert('Patients cleared successfully.');
-        await loadAll();
+        await request('/admin/clear_patients', { method: 'POST' });
+        await loadPatients();
+        showMessage('loginMessage', 'Patients cleared', 'success');
       } catch (err) {
-        alert('Clear failed: ' + err.message);
+        showMessage('loginMessage', 'Error: ' + err.message, 'error');
       }
     });
 
-    el('btn-clear-vendors').addEventListener('click', async () => {
-      if (!confirm('Clear ALL vendor data (including approved/blocked/pending)?')) return;
+    el('btnClearVendors').addEventListener('click', async () => {
+      if (!confirm('Clear all vendors? This cannot be undone.')) return;
       try {
-        await request('/admin/vendors/clear', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
-        alert('Vendors cleared successfully.');
-        await loadAll();
+        await request('/admin/clear_vendors', { method: 'POST' });
+        await loadVendors();
+        showMessage('loginMessage', 'Vendors cleared', 'success');
       } catch (err) {
-        alert('Clear failed: ' + err.message);
+        showMessage('loginMessage', 'Error: ' + err.message, 'error');
       }
     });
 
-    el('btn-clear-doctors').addEventListener('click', async () => {
-      if (!confirm('Clear ALL doctor data (including pending/approved/blocked)?')) return;
+    el('btnClearDoctors').addEventListener('click', async () => {
+      if (!confirm('Clear all doctors? This cannot be undone.')) return;
       try {
-        await request('/admin/doctors/clear', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({})
-        });
-        alert('Doctors cleared successfully.');
-        await loadAll();
+        await request('/admin/clear_doctors', { method: 'POST' });
+        await loadDoctors();
+        showMessage('loginMessage', 'Doctors cleared', 'success');
       } catch (err) {
-        alert('Clear failed: ' + err.message);
+        showMessage('loginMessage', 'Error: ' + err.message, 'error');
       }
     });
 
-    el('broadcast-form').addEventListener('submit', async (e) => {
+    el('broadcastForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
       try {
-        const out = await request('/admin/broadcast', {
+        const fd = new FormData(e.target);
+        await request('/admin/broadcast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            target: fd.get('target'),
             message: fd.get('message'),
-            duration_seconds: Number(fd.get('duration_seconds'))
+            target: fd.get('target'),
+            duration_seconds: parseInt(fd.get('duration_seconds'))
           })
         });
-        el('broadcast-result').textContent = `Broadcast sent (${out.target}) for ${out.duration_seconds}s`;
+        showMessage('broadcastMessage', 'Broadcast sent successfully!', 'success');
         e.target.reset();
       } catch (err) {
-        el('broadcast-result').textContent = 'Broadcast failed: ' + err.message;
+        showMessage('broadcastMessage', 'Error: ' + err.message, 'error');
       }
     });
 
-    window.addEventListener('load', async () => {
-      setMsg('Connected to: ' + window.location.origin);
-      if (!state.token) {
-        toggleAdminArea(false);
-        return;
-      }
-      try {
-        toggleAdminArea(true);
-        await loadAll();
-        setMsg('Admin session restored');
-      } catch {
-        setToken('');
-        toggleAdminArea(false);
-      }
-    });
+    // Check if already logged in
+    if (state.token) {
+      showAdminArea(true);
+      loadAll();
+    }
   </script>
 </body>
 </html>
