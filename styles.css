@@ -741,6 +741,179 @@ html.dark-mode .modal-card {
   border-color: #1e2749;
 }
 
+/* Store Cards - Magnificent Styling */
+.store-card {
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.08);
+}
+
+.store-card.magnificent {
+  border: 2px solid transparent;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  background-clip: content-box;
+  padding: 20px;
+}
+
+.store-card.magnificent:hover {
+  border-color: var(--primary);
+  box-shadow: 0 12px 32px rgba(5, 150, 105, 0.15);
+  transform: translateY(-4px);
+}
+
+html.dark-mode .store-card.magnificent {
+  background: linear-gradient(135deg, #0f1629 0%, #0a0e27 100%);
+  border-color: #1e2749;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+html.dark-mode .store-card.magnificent:hover {
+  border-color: var(--primary);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.2);
+  transform: translateY(-4px);
+}
+
+.store-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+html.dark-mode .store-header {
+  border-bottom-color: #1e2749;
+}
+
+.store-name {
+  margin: 0 0 6px 0;
+  font-size: 1.25rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.store-location {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.store-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.rating-stars {
+  font-size: 1.2rem;
+  letter-spacing: 0.05em;
+}
+
+.rating-value {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 0.95rem;
+  background: rgba(5, 150, 105, 0.1);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+html.dark-mode .rating-value {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.store-meta {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meta-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.meta-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.store-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.full-width {
+  width: 100%;
+  justify-content: center;
+}
+
+.empty-state-stores {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+
+.empty-state-stores h3 {
+  color: var(--text);
+  margin: 12px 0 8px 0;
+}
+
+/* Pagination Styling */
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 2px solid var(--line);
+}
+
+html.dark-mode .pagination-container {
+  border-top-color: #1e2749;
+}
+
+.pagination-btn {
+  padding: 10px 16px !important;
+  font-size: 0.9rem !important;
+  transition: all 0.3s ease;
+}
+
+.pagination-btn:disabled,
+.pagination-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.pagination-info {
+  font-weight: 700;
+  color: var(--text);
+  min-width: 140px;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
 .toast {
   background: linear-gradient(135deg, #065f46 0%, #059669 100%);
   color: #d1fae5;

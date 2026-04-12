@@ -948,27 +948,117 @@ async function runMedicalStoreSearch(name) {
 
 function renderNearbyStores(stores, userLat, userLng) {
   const list = el("nearby-store-list");
-  if (list) {
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  // Filter stores to only 20km radius and ensure they have valid coordinates
+  const filteredStores = (stores || []).filter(s => {
+    const distance = s.distance_km || 0;
+    return distance <= 20 && Number.isFinite(s.lat) && Number.isFinite(s.lng);
+  });
+
+  if (!filteredStores.length) {
+    list.innerHTML = `
+      <div class="empty-state-stores">
+        <div style="font-size: 2rem; margin-bottom: 12px;">🏥</div>
+        <h3>No Medical Stores Found</h3>
+        <p>No medical stores available within 20 km of your location.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Pagination setup
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(filteredStores.length / itemsPerPage);
+  let currentPage = 1;
+
+  function renderPage(page) {
     list.innerHTML = "";
-    if (stores && stores.length > 0) {
-      stores.forEach((s) => {
-        const trusted = s.trusted ? "<span class='pill'>Trusted</span>" : "";
-        const note = s.note ? s.note : "No note available.";
-        const phone = s.phone ? `<a href=\"tel:${s.phone}\" class=\"btn primary\">Call ${s.phone}</a>` : "<span>Phone not available</span>";
-        const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${s.lat},${s.lng}`)}`;
-        const card = document.createElement("article");
-        card.className = "result-card";
-        card.innerHTML = `
-          <div class="section-head"><h4>${s.store_name}</h4>${trusted}</div>
-          <p><strong>Distance:</strong> ${formatDistanceKm(s.distance_km)}</p>
-          <p><strong>Note:</strong> ${note}</p>
-          <div>${phone}</div>
-          <div style="margin-top:8px"><a href="${mapsUrl}" rel="noopener">Open Store in Google Maps</a></div>
-        `;
-        list.appendChild(card);
-      });
+    const startIdx = (page - 1) * itemsPerPage;
+    const endIdx = startIdx + itemsPerPage;
+    const pageStores = filteredStores.slice(startIdx, endIdx);
+
+    // Render stores for current page
+    pageStores.forEach((s, idx) => {
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${s.lat},${s.lng}`)}`;
+      const rating = s.rating ? parseFloat(s.rating).toFixed(1) : "N/A";
+      const ratingDisplay = s.rating
+        ? `<div class="store-rating">
+             <span class="rating-stars">${'⭐'.repeat(Math.round(s.rating))}</span>
+             <span class="rating-value">${rating}</span>
+           </div>`
+        : `<div class="store-rating"><span class="rating-value">No rating</span></div>`;
+
+      const card = document.createElement("article");
+      card.className = "store-card magnificent";
+      card.innerHTML = `
+        <div class="store-header">
+          <div>
+            <h3 class="store-name">${s.store_name || 'Medical Store'}</h3>
+            <p class="store-location">📍 ${s.shop_address || 'Location not available'}</p>
+          </div>
+          ${ratingDisplay}
+        </div>
+        <div class="store-meta">
+          <div class="meta-item">
+            <span class="meta-label">Distance</span>
+            <span class="meta-value">${formatDistanceKm(s.distance_km)}</span>
+          </div>
+        </div>
+        <div class="store-actions">
+          <a href="${mapsUrl}" target="_blank" rel="noopener" class="btn primary full-width">
+            📍 View on Google Maps
+          </a>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+
+    // Render pagination controls
+    if (totalPages > 1) {
+      const paginationContainer = document.createElement("div");
+      paginationContainer.className = "pagination-container";
+
+      // Previous button
+      const prevBtn = document.createElement("button");
+      prevBtn.className = `btn ghost pagination-btn ${currentPage === 1 ? 'disabled' : ''}`;
+      prevBtn.textContent = "← Previous";
+      prevBtn.disabled = currentPage === 1;
+      prevBtn.onclick = () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderPage(currentPage);
+        }
+      };
+      paginationContainer.appendChild(prevBtn);
+
+      // Page info
+      const pageInfo = document.createElement("div");
+      pageInfo.className = "pagination-info";
+      pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+      paginationContainer.appendChild(pageInfo);
+
+      // Next button
+      const nextBtn = document.createElement("button");
+      nextBtn.className = `btn ghost pagination-btn ${currentPage === totalPages ? 'disabled' : ''}`;
+      nextBtn.textContent = "Next →";
+      nextBtn.disabled = currentPage === totalPages;
+      nextBtn.onclick = () => {
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderPage(currentPage);
+        }
+      };
+      paginationContainer.appendChild(nextBtn);
+
+      list.appendChild(paginationContainer);
     }
   }
+
+  // Render first page
+  renderPage(currentPage);
 }
 
 function bindEvents() {
@@ -1460,24 +1550,45 @@ function bindEvents() {
   });
 
   el("btn-nearby-stores")?.addEventListener("click", async () => {
+    if (!navigator.geolocation) {
+      toast("Geolocation is not available in your browser");
+      return;
+    }
+
+    // Show loading state
     const nearbyBtn = el("btn-nearby-stores");
-    if (!navigator.geolocation) return;
+    const originalText = nearbyBtn?.textContent;
+    if (nearbyBtn) nearbyBtn.textContent = "📍 Getting your location...";
+    if (nearbyBtn) nearbyBtn.disabled = true;
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          const data = await getJson(`/medical-stores/nearby?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&radius_km=10`);
+
+          // Fetch stores within 20km radius
+          const data = await getJson(`/medical-stores/nearby?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&radius_km=20`);
+
           switchDashboardPanel("panel-store-search");
           renderNearbyStores(data.stores || [], lat, lng);
-          const mapsNearby = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`medical stores near ${lat},${lng}`)}`;
-          if (nearbyBtn) nearbyBtn.href = mapsNearby;
+
+          if (originalText && nearbyBtn) nearbyBtn.textContent = originalText;
+          if (nearbyBtn) nearbyBtn.disabled = false;
+
+          toast("Nearby medical stores loaded");
         } catch (err) {
-          toast(`Nearby search failed: ${err.message}`);
+          toast(`Failed to load stores: ${err.message}`);
+          if (nearbyBtn) nearbyBtn.textContent = originalText;
+          if (nearbyBtn) nearbyBtn.disabled = false;
         }
       },
-      () => {},
-      { timeout: 10000 }
+      () => {
+        toast("Location permission denied. Please enable location access.");
+        if (nearbyBtn) nearbyBtn.textContent = originalText;
+        if (nearbyBtn) nearbyBtn.disabled = false;
+      },
+      { timeout: 10000, enableHighAccuracy: true }
     );
   });
 
