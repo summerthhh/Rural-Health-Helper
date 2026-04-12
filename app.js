@@ -869,36 +869,13 @@ function renderSearchResults(result) {
     <h4>Nearby shops</h4>
   `;
 
-  const shopsWrap = document.createElement("div");
-  shopsWrap.className = "shop-list";
-
-  if (!result.shops || result.shops.length === 0) {
-    const noShop = document.createElement("div");
-    noShop.className = "shop-item";
-    noShop.textContent = "No shops found.";
-    shopsWrap.appendChild(noShop);
-  } else {
-    result.shops.forEach((shop) => {
-      const item = document.createElement("article");
-      item.className = "shop-item";
-
-      const medLine = shop.available_medicines?.length
-        ? shop.available_medicines.join(", ")
-        : "Not listed";
-      const dist = formatDistanceKm(shop.distance_km);
-      const mapUrl = `https://www.google.com/maps/search/?api=1&query=${shop.lat},${shop.lng}`;
-
-      item.innerHTML = `
-        <h4>${shop.name}</h4>
-        <p><strong>Distance:</strong> ${dist}</p>
-        <p><strong>Available:</strong> ${medLine}</p>
-        <a href="${mapUrl}" target="_blank" rel="noopener">Open in Google Maps</a>
-      `;
-      shopsWrap.appendChild(item);
-    });
-  }
-
-  card.appendChild(shopsWrap);
+  const shopsBtn = document.createElement("a");
+  shopsBtn.className = "btn secondary full-width";
+  shopsBtn.href = "https://www.google.com/maps/search/?api=1&query=medical+stores+near+me";
+  shopsBtn.target = "_blank";
+  shopsBtn.rel = "noopener";
+  shopsBtn.textContent = "📍 Open Nearby Medical Shops in Google Maps";
+  card.appendChild(shopsBtn);
   out.appendChild(card);
 }
 
