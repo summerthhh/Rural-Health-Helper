@@ -5,20 +5,46 @@
       "src": "main.py",
       "use": "@vercel/python",
       "config": {
+        "maxLambdaSize": "50mb",
         "includeFiles": [
-          "frontend/**",
           "index.html",
           "admin.html",
           "app.js",
-          "styles.css"
+          "styles.css",
+          "data/**",
+          "frontend/**"
         ]
       }
     }
   ],
   "routes": [
     {
+      "src": "/static/(.*)",
+      "dest": "/main.py"
+    },
+    {
+      "src": "/admin.html",
+      "dest": "/main.py"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/main.py"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "/main.py"
+    },
+    {
+      "src": "/broadcast/(.*)",
+      "dest": "/main.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "/main.py"
     }
-  ]
+  ],
+  "env": {
+    "PYTHONPATH": "./"
+  }
 }
+
