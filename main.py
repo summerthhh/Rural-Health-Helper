@@ -294,6 +294,17 @@ def root():
     return {"message": "Frontend not found"}
 
 
+@app.get("/admin.html")
+def admin_page():
+    admin_path = os.path.join(frontend_dir, "admin.html")
+    if os.path.exists(admin_path):
+        return FileResponse(admin_path)
+    root_admin = os.path.join(APP_DIR, "admin.html")
+    if os.path.exists(root_admin):
+        return FileResponse(root_admin)
+    raise HTTPException(status_code=404, detail="Admin page not found")
+
+
 @app.post('/patient/signup')
 def patient_signup(p: PatientSignup):
     # ensure phone uniqueness
