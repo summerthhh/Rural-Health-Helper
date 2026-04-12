@@ -1638,13 +1638,19 @@ window.addEventListener("load", async () => {
   switchView("view-landing");
 
   // Theme Toggle Handler
-  el("btn-theme-toggle")?.addEventListener("change", () => {
+  el("btn-theme-toggle")?.addEventListener("click", () => {
     const html = document.documentElement;
-    const isDark = el("btn-theme-toggle")?.checked || false;
+    html.classList.toggle("dark-mode");
+    const isDark = html.classList.contains("dark-mode");
+    const btn = el("btn-theme-toggle");
+    const icon = el("btn-theme-toggle")?.querySelector(".theme-icon");
+    
     if (isDark) {
-      html.classList.add("dark-mode");
+      btn?.classList.add("dark-mode-active");
+      if (icon) icon.textContent = "🌙";
     } else {
-      html.classList.remove("dark-mode");
+      btn?.classList.remove("dark-mode-active");
+      if (icon) icon.textContent = "☀️";
     }
     localStorage.setItem("theme", isDark ? "dark" : "light");
   });
@@ -1653,7 +1659,9 @@ window.addEventListener("load", async () => {
   const savedTheme = localStorage.getItem("theme") || "light";
   if (savedTheme === "dark") {
     document.documentElement.classList.add("dark-mode");
-    const toggle = el("btn-theme-toggle");
-    if (toggle) toggle.checked = true;
+    const btn = el("btn-theme-toggle");
+    const icon = el("btn-theme-toggle")?.querySelector(".theme-icon");
+    btn?.classList.add("dark-mode-active");
+    if (icon) icon.textContent = "🌙";
   }
 });
