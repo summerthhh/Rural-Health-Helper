@@ -12,7 +12,10 @@
           "app.js",
           "styles.css",
           "data/**",
-          "frontend/**"
+          "frontend/**",
+          "*.html",
+          "*.css",
+          "*.js"
         ]
       }
     }
@@ -20,6 +23,14 @@
   "routes": [
     {
       "src": "/static/(.*)",
+      "dest": "/main.py"
+    },
+    {
+      "src": "/styles.css",
+      "dest": "/main.py"
+    },
+    {
+      "src": "/app.js",
       "dest": "/main.py"
     },
     {
@@ -39,6 +50,22 @@
       "dest": "/main.py"
     },
     {
+      "src": "/patient/(.*)",
+      "dest": "/main.py"
+    },
+    {
+      "src": "/vendor/(.*)",
+      "dest": "/main.py"
+    },
+    {
+      "src": "/doctor/(.*)",
+      "dest": "/main.py"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "/main.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "/main.py"
     }
@@ -47,4 +74,5 @@
     "PYTHONPATH": "./"
   }
 }
+
 
