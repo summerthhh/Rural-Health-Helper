@@ -204,6 +204,7 @@ function switchView(viewId) {
   ids.forEach((id) => hide(id));
   show(viewId);
   state.activeView = viewId;
+  localStorage.setItem("active_view", viewId);
 }
 
 function switchAuthTab(kind, tab) {
@@ -966,34 +967,6 @@ function bindEvents() {
     btn.addEventListener("click", () => switchView(btn.getAttribute("data-back")));
   });
 
-  el("btn-home")?.addEventListener("click", async () => {
-    if (state.userId) {
-      try {
-        await loadPatientDashboard(state.userId);
-      } catch {
-        switchView("view-landing");
-      }
-      return;
-    }
-    if (state.vendorId) {
-      try {
-        await loadVendorDashboard(state.vendorId);
-      } catch {
-        switchView("view-landing");
-      }
-      return;
-    }
-    if (state.doctorId) {
-      try {
-        await loadDoctorDashboard(state.doctorId);
-      } catch {
-        switchView("view-landing");
-      }
-      return;
-    }
-    switchView("view-landing");
-  });
-
   el("btn-signin")?.addEventListener("click", () => {
     switchView("view-patient-auth");
     switchAuthTab("patient", "login");
@@ -1596,7 +1569,13 @@ window.addEventListener("load", async () => {
     }
   }
 
-  switchView("view-landing");
+  // Restore previous active view if signed in
+  const savedView = localStorage.getItem("active_view");
+  if (savedView && (state.userId || state.vendorId || state.doctorId)) {
+    switchView(savedView);
+  } else {
+    switchView("view-landing");
+  }
 
   // Theme Toggle Handler
   el("btn-theme-toggle")?.addEventListener("click", () => {
