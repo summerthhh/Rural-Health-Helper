@@ -305,6 +305,22 @@ def admin_page():
     raise HTTPException(status_code=404, detail="Admin page not found")
 
 
+@app.get("/styles.css")
+def styles_css():
+    styles_path = os.path.join(APP_DIR, "styles.css")
+    if os.path.exists(styles_path):
+        return FileResponse(styles_path, media_type="text/css")
+    raise HTTPException(status_code=404, detail="Styles not found")
+
+
+@app.get("/app.js")
+def app_js():
+    app_js_path = os.path.join(APP_DIR, "app.js")
+    if os.path.exists(app_js_path):
+        return FileResponse(app_js_path, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="App JS not found")
+
+
 @app.post('/patient/signup')
 def patient_signup(p: PatientSignup):
     # ensure phone uniqueness
