@@ -1604,4 +1604,153 @@ window.addEventListener("load", async () => {
     btn?.classList.add("dark-mode-active");
     if (icon) icon.textContent = "🌙";
   }
+  
+  // Real-time sync and broadcasting system
+  let lastBroadcastIds = new Set();
+  let currentSyncInterval = null;
+  
+  async function syncRealTimeUpdates() {
+    try {
+      // Determine user role
+      let role = null;
+      if (state.userId) role = 'patient';
+      if (state.vendorId) role = 'vendor';
+      if (state.doctorId) role = 'doctor';
+      
+      if (!role) return; // Not logged in
+      
+      // Fetch active broadcasts
+      const broadcastRes = await fetch(`/broadcast/${role}`);
+      const broadcastData = await broadcastRes.json();
+      
+      if (broadcastData.announcements && broadcastData.announcements.length > 0) {
+        broadcastData.announcements.forEach(announcement => {
+          const announcementId = announcement.id;
+          
+          // Check if this is a new broadcast
+          if (!lastBroadcastIds.has(announcementId)) {
+            lastBroadcastIds.add(announcementId);
+            
+            // Display broadcast banner
+            displayBroadcastBanner(announcement);
+          }
+        });
+      }
+      
+      // Clean up old broadcasts that are no longer active
+      if (broadcastData.announcements) {
+        const activeIds = new Set(broadcastData.announcements.map(a => a.id));
+        lastBroadcastIds.forEach(id => {
+          if (!activeIds.has(id)) {
+            lastBroadcastIds.delete(id);
+            removeBroadcastBanner(id);
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Error syncing real-time updates:', err);
+    }
+  }
+  
+  function displayBroadcastBanner(announcement) {
+    let bannerContainer = el('broadcast-banner-container');
+    if (!bannerContainer) {
+      bannerContainer = document.createElement('div');
+      bannerContainer.id = 'broadcast-banner-container';
+      bannerContainer.style.cssText = `
+        position: fixed;
+        top: 80px;
+        left: 0;
+        right: 0;
+        z-index: 9000;
+        padding: 10px;
+        max-height: 200px;
+        overflow-y: auto;
+      `;
+      document.body.insertBefore(bannerContainer, document.body.firstChild);
+    }
+    
+    const banner = document.createElement('div');
+    banner.id = `broadcast-${announcement.id}`;
+    banner.style.cssText = `
+      background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+      color: white;
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 8px 24px rgba(168, 85, 247, 0.3);
+      animation: slideIn 0.3s ease;
+    `;
+    
+    const messageEl = document.createElement('div');
+    messageEl.style.flex = '1';
+    messageEl.innerHTML = `
+      <div style="font-weight: 600; margin-bottom: 4px;">📢 ${announcement.target.toUpperCase()} UPDATE</div>
+      <div style="font-size: 0.95rem;">${announcement.message}</div>
+    `;
+    
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = `
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-left: 12px;
+      white-space: nowrap;
+      transition: all 0.3s;
+    `;
+    closeBtn.textContent = 'Dismiss';
+    closeBtn.addEventListener('click', () => banner.remove());
+    closeBtn.addEventListener('mouseover', () => {
+      closeBtn.style.background = 'rgba(255, 255, 255, 0.3)';
+    });
+    closeBtn.addEventListener('mouseout', () => {
+      closeBtn.style.background = 'rgba(255, 255, 255, 0.2)';
+    });
+    
+    banner.appendChild(messageEl);
+    banner.appendChild(closeBtn);
+    bannerContainer.appendChild(banner);
+    
+    // Auto-remove after 10 seconds
+    setTimeout(() => {
+      if (banner.parentNode) banner.remove();
+    }, 10000);
+  }
+  
+  function removeBroadcastBanner(announcementId) {
+    const banner = el(`broadcast-${announcementId}`);
+    if (banner) banner.remove();
+  }
+  
+  // Start real-time sync - poll every 3 seconds
+  if (currentSyncInterval) clearInterval(currentSyncInterval);
+  currentSyncInterval = setInterval(syncRealTimeUpdates, 3000);
+  syncRealTimeUpdates(); // Initial check
+  
+  // Add CSS animation
+  if (!el('broadcast-style')) {
+    const style = document.createElement('style');
+    style.id = 'broadcast-style';
+    style.textContent = `
+      @keyframes slideIn {
+        from {
+          transform: translateY(-20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
 });
+

@@ -304,7 +304,6 @@ class DoctorConsultAction(BaseModel):
 class AdminBroadcastInput(BaseModel):
     message: str
     target: str = "all"  # all | patients | vendors | doctors
-    duration_seconds: int = 30
 
 
 def require_admin(x_admin_token: Optional[str] = Header(default=None, alias="X-Admin-Token")):
@@ -1442,19 +1441,13 @@ def admin_broadcast(data: AdminBroadcastInput, _: None = Depends(require_admin))
     target = (data.target or 'all').strip().lower()
     if target not in ['all', 'patients', 'vendors', 'doctors']:
         raise HTTPException(status_code=400, detail='Invalid target')
-    duration = int(data.duration_seconds or 30)
-    if duration < 5:
-        duration = 5
-    if duration > 3600:
-        duration = 3600
     now = int(time.time())
     announcement = {
         'id': str(uuid4()),
         'message': msg,
         'target': target,
         'start_ts': now,
-        'end_ts': now + duration,
-        'duration_seconds': duration
+        'active': True
     }
     announcements.append(announcement)
     _save_json(ANNOUNCEMENTS_FILE, announcements)
@@ -1471,15 +1464,30 @@ def get_broadcast(role: str):
         'vendor': 'vendors',
         'doctor': 'doctors'
     }
-    now = int(time.time())
     active = []
     for a in announcements:
-        if int(a.get('end_ts', 0)) < now:
+        if not a.get('active', False):
             continue
         t = str(a.get('target', 'all')).lower()
         if t in ['all', target_map[r]]:
             active.append(a)
     return {'announcements': active}
+
+
+@app.post('/admin/broadcast/{broadcast_id}/stop')
+def stop_broadcast(broadcast_id: str, _: None = Depends(require_admin)):
+    for a in announcements:
+        if str(a.get('id')) == str(broadcast_id):
+            a['active'] = False
+            _save_json(ANNOUNCEMENTS_FILE, announcements)
+            return {'broadcast_id': broadcast_id, 'stopped': True}
+    raise HTTPException(status_code=404, detail='Broadcast not found')
+
+
+@app.get('/admin/broadcasts')
+def get_active_broadcasts(_: None = Depends(require_admin)):
+    active = [a for a in announcements if a.get('active', False)]
+    return {'broadcasts': active}
 
 
 @app.post('/admin/bugs')

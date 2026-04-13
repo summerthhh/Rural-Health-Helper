@@ -801,7 +801,7 @@
 
       <!-- Broadcast -->
       <div class="card">
-        <h3>📢 Send Broadcast</h3>
+        <h3>📢 Broadcast Message</h3>
         <form id="broadcastForm">
           <div class="form-group">
             <label>Target Audience</label>
@@ -823,21 +823,15 @@
             >
           </div>
 
-          <div class="form-group">
-            <label>Duration (seconds)</label>
-            <input
-              type="number"
-              name="duration_seconds"
-              min="5"
-              max="3600"
-              value="30"
-              required
-            >
-          </div>
-
-          <button type="submit" class="btn btn-secondary">Send Broadcast</button>
+          <button type="submit" class="btn btn-secondary">Start Broadcasting</button>
         </form>
         <div class="message" id="broadcastMessage"></div>
+        
+        <!-- Active Broadcasts -->
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+          <h4>Active Broadcasts</h4>
+          <div id="activeBroadcasts" style="margin-top: 15px;"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1263,21 +1257,62 @@
       e.preventDefault();
       try {
         const fd = new FormData(e.target);
-        await request('/admin/broadcast', {
+        const result = await request('/admin/broadcast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             message: fd.get('message'),
-            target: fd.get('target'),
-            duration_seconds: parseInt(fd.get('duration_seconds'))
+            target: fd.get('target')
           })
         });
-        showMessage('broadcastMessage', 'Broadcast sent successfully!', 'success');
+        showMessage('broadcastMessage', 'Broadcasting started!', 'success');
         e.target.reset();
+        refreshActiveBroadcasts();
       } catch (err) {
         showMessage('broadcastMessage', 'Error: ' + err.message, 'error');
       }
     });
+    
+    // Refresh active broadcasts every 2 seconds
+    async function refreshActiveBroadcasts() {
+      try {
+        const res = await request('/admin/broadcasts', { method: 'GET' });
+        const container = el('activeBroadcasts');
+        if (!res.broadcasts || res.broadcasts.length === 0) {
+          container.innerHTML = '<p style="color: var(--text-secondary);">No active broadcasts</p>';
+          return;
+        }
+        container.innerHTML = res.broadcasts.map(b => `
+          <div style="background: rgba(168, 85, 247, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--primary);">
+            <div style="display: flex; justify-content: space-between; align-items: start; gap: 10px;">
+              <div style="flex: 1;">
+                <div style="font-weight: 600; margin-bottom: 4px;">Target: <span style="color: var(--primary);">${b.target}</span></div>
+                <div style="font-size: 0.95rem; margin-bottom: 8px;">${b.message}</div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">Started: ${new Date(b.start_ts * 1000).toLocaleString()}</div>
+              </div>
+              <button class="btn btn-danger" onclick="stopBroadcast('${b.id}')" style="white-space: nowrap;">Stop</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error('Error refreshing broadcasts:', err);
+      }
+    }
+    
+    // Stop broadcast function
+    window.stopBroadcast = async function(broadcastId) {
+      try {
+        await request(`/admin/broadcast/${broadcastId}/stop`, { method: 'POST' });
+        showMessage('broadcastMessage', 'Broadcast stopped!', 'success');
+        refreshActiveBroadcasts();
+      } catch (err) {
+        showMessage('broadcastMessage', 'Error stopping broadcast: ' + err.message, 'error');
+      }
+    };
+    
+    // Poll active broadcasts every 2 seconds
+    setInterval(refreshActiveBroadcasts, 2000);
+    refreshActiveBroadcasts();
 
     // Always start with login section first
     showAdminArea(false);
