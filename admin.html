@@ -11,40 +11,40 @@
     * { box-sizing: border-box; }
 
     :root {
-      /* Light mode colors - iOS Glassmorphism */
+      /* Light mode colors - iOS Translucent Glass */
       --bg-primary: #f5f7fa;
       --bg-secondary: #eff2f7;
-      --card-bg: rgba(255, 255, 255, 0.92);
+      --card-bg: rgba(255, 255, 255, 0.55);
       --text-primary: #0f172e;
       --text-secondary: #8b93a1;
       --text-light: #0f172e;
-      --border-color: rgba(0, 0, 0, 0.06);
+      --border-color: rgba(255, 255, 255, 0.6);
       --primary: #34c759;
       --primary-dark: #2eae4e;
       --secondary: #ff9500;
       --danger: #ff3b30;
       --success: #34c759;
       --warning: #ffbd0f;
-      --shadow-sm: 0 4px 16px rgba(31, 38, 135, 0.08);
-      --shadow-md: 0 8px 32px rgba(31, 38, 135, 0.12);
-      --shadow-lg: 0 16px 48px rgba(31, 38, 135, 0.15);
+      --shadow-sm: 0 4px 16px rgba(31, 38, 135, 0.06);
+      --shadow-md: 0 8px 32px rgba(31, 38, 135, 0.1);
+      --shadow-lg: 0 16px 48px rgba(31, 38, 135, 0.12);
       --radius: 20px;
       --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      --blur: blur(20px);
+      --blur: blur(40px);
     }
 
     html.dark-mode {
       --bg-primary: #0a0a0a;
       --bg-secondary: #151520;
-      --card-bg: rgba(25, 25, 35, 0.88);
+      --card-bg: rgba(25, 25, 35, 0.5);
       --text-primary: #f5f7fa;
       --text-secondary: #8b93a1;
       --text-light: #f5f7fa;
       --border-color: rgba(255, 255, 255, 0.1);
-      --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.3);
-      --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.45);
-      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
-      --blur: blur(25px);
+      --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.4);
+      --blur: blur(50px);
     }
 
     html {
@@ -216,7 +216,7 @@
       background: var(--card-bg);
       backdrop-filter: var(--blur);
       -webkit-backdrop-filter: var(--blur);
-      border-color: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.1);
     }
 
     .card:hover {
@@ -251,7 +251,7 @@
       border-radius: 12px;
       font-size: 0.95rem;
       font-family: inherit;
-      background: rgba(255, 255, 255, 0.6);
+      background: rgba(255, 255, 255, 0.5);
       backdrop-filter: var(--blur);
       -webkit-backdrop-filter: var(--blur);
       color: var(--text-primary);
@@ -259,25 +259,25 @@
     }
 
     html.dark-mode input, html.dark-mode select, html.dark-mode textarea {
-      background: rgba(25, 25, 35, 0.6);
+      background: rgba(35, 35, 50, 0.4);
       backdrop-filter: var(--blur);
       -webkit-backdrop-filter: var(--blur);
       color: #f5f7fa;
-      border-color: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.1);
     }
 
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.15);
-      background: rgba(255, 255, 255, 0.8);
+      background: rgba(255, 255, 255, 0.7);
     }
 
     html.dark-mode input:focus, html.dark-mode select:focus, html.dark-mode textarea:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.25);
-      background: rgba(35, 35, 50, 0.8);
+      background: rgba(45, 45, 65, 0.6);
     }
 
     /* Ensure text inside cards remains readable */
