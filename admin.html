@@ -910,7 +910,10 @@
       if (response.status === 401) {
         setToken('');
         showAdminArea(false);
-        showMessage('loginMessage', 'Session expired. Please login again.', 'error');
+        // Only show session expired if user is currently viewing admin area
+        if (el('adminArea').style.display !== 'none') {
+          showMessage('loginMessage', 'Session expired. Please login again.', 'error');
+        }
         throw new Error('Admin auth required');
       }
 
@@ -1314,14 +1317,43 @@
     setInterval(refreshActiveBroadcasts, 2000);
     refreshActiveBroadcasts();
 
+    // Validate token and auto-login if valid
+    async function validateAndAutoLogin() {
+      if (!state.token) {
+        showAdminArea(false);
+        return;
+      }
+
+      try {
+        // Try to make a simple, safe request to validate token
+        const response = await fetch('/admin/broadcasts', {
+          method: 'GET',
+          headers: { 'X-Admin-Token': state.token }
+        });
+
+        if (response.ok) {
+          // Token is valid, show admin area and load data
+          showAdminArea(true);
+          loadAll();
+        } else if (response.status === 401) {
+          // Token is invalid or expired
+          setToken('');
+          showAdminArea(false);
+          console.log('Stored token was invalid, cleared session');
+        }
+      } catch (err) {
+        // On error, clear token to prevent repeated failures
+        setToken('');
+        showAdminArea(false);
+        console.error('Token validation error:', err);
+      }
+    }
+
     // Always start with login section first
     showAdminArea(false);
 
-    // Check if already logged in
-    if (state.token) {
-      showAdminArea(true);
-      loadAll();
-    }
+    // Try to validate and auto-login with stored token
+    validateAndAutoLogin();
   </script>
 </body>
 </html>
